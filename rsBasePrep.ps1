@@ -545,7 +545,6 @@ switch ($stage) {
       Start-Sleep 10
       tzutil /s "Central Standard Time"
       Create-ScheduledTask
-      Create-PullServerInfo
       Install-Net45
       Install-WMF4
       Set-Stage -value 2
@@ -566,6 +565,7 @@ switch ($stage) {
       set-item WSMan:\localhost\Client\TrustedHosts * -force
       Update-HostFile
       Get-TempPullDSC
+      Create-PullServerInfo
       Install-DSC
       Install-Certs
       Set-Stage -value 4
