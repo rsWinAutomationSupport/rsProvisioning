@@ -197,8 +197,8 @@ Function Get-TempPullDSC {
     if((Test-Path -Path "C:\Program Files\WindowsPowerShell\DscService\Modules" -PathType Container) -eq $false) {
       New-Item -Path "C:\Program Files\WindowsPowerShell\DscService\Modules" -ItemType Container
     }
-    Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.prov, "initDSC.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
     Copy-Item $($d.wD, $d.mR, "rsPlatform" -join '\') "C:\Program Files\WindowsPowerShell\Modules" -Recurse
+    Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.prov, "initDSC.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
   }
 } 
 
