@@ -185,9 +185,9 @@ Function Get-TempPullDSC {
     Start-Service Browser
     chdir "C:\Program Files\WindowsPowerShell\Modules\"
     try {
-      Start -Wait $gitExe -ArgumentList "clone  $("https://github.com/" + $d.gMO + "/" + "rsGit.git")"
+      Start -Wait -NoNewWindow $gitExe -ArgumentList "clone  $("https://github.com/" + $d.gMO + "/" + "rsGit.git")"
       chdir $($d.wD)
-      Start -Wait $gitExe -ArgumentList "clone  $("git@github.com:" + $d.gCA + "/" + $($d.mR) + ".git")"
+      Start -Wait -NoNewWindow $gitExe -ArgumentList "clone  $("git@github.com:" + $d.gCA + "/" + $($d.mR) + ".git")"
     }
     catch {
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to Clone $requiredModule `n $($_.Exception.Message)"
@@ -249,7 +249,7 @@ Function Set-Stage {
 ##################################################################################################################################
 Function Create-ScheduledTask {
   Write-Log -value "Creating BasePrep.ps1 scheduled task"
-  #schtasks.exe /create /sc Onstart /tn BasePrep /ru System /tr "PowerShell.exe -ExecutionPolicy Bypass -file $($d.wD, $d.prov, $d.bS -join '\')"
+  schtasks.exe /create /sc Onstart /tn BasePrep /ru System /tr "PowerShell.exe -ExecutionPolicy Bypass -file $($d.wD, $d.prov, $d.bS -join '\')"
   return
 }
 
