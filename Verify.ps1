@@ -40,7 +40,6 @@ Function Check-Hash {
     Set-Content -Path $($d.wD, "rsEnvironments.hash" -join '\') -Value (Get-FileHash -Path $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')).hash
     chdir $($d.wD, $d.mR -join '\')
     Start -Wait "C:\Program Files (x86)\Git\bin\sh.exe" -ArgumentList "--login -i -c ""git checkout $($d.br);git reset --hard; git clean -f -d;git pull;"""
-    Create-Modules
     & $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\') -ExecutionPolicy -Bypass -Force
   }
   
