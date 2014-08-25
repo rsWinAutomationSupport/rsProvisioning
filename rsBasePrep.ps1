@@ -56,6 +56,7 @@ Function Create-ClientData {
       Add-Content -Value "`"br`" = `"$($d.br)`"" -Path $path
       Add-Content -Value "`"wD`" = `"$($d.wD)`"" -Path $path
       Add-Content -Value "`"mR`" = `"$($d.mR)`"" -Path $path
+      Add-Content -Value "`"prov`" = `"$($d.prov)`"" -Path $path
       Add-Content -Value "`"bS`" = `"$($d.bS)`"" -Path $path
       Add-Content -Value "`"gS`" = `"$($d.gS)`"" -Path $path
       Add-Content -Value "`"gPath`" = `"$($d.gPath)`"" -Path $path
@@ -195,7 +196,7 @@ Function Get-TempPullDSC {
          New-Item -Path "C:\Program Files\WindowsPowerShell\DscService\Modules" -ItemType Container
       }
       Copy-Item $($d.wD, $d.mR, "rsPlatform" -join '\') "C:\Program Files\WindowsPowerShell\Modules" -Recurse
-      Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "initDSC.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+      Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.prov, "initDSC.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
    }
 }
 
@@ -204,12 +205,12 @@ Function Get-TempPullDSC {
 #                                             Function - Install DSC (all nodes)
 ##################################################################################################################################
 Function Install-DSC {
-   Set-Content -Path $($d.wD, $d.mR, "PullServerDSC.hash" -join '\') -Value (Get-FileHash -Path $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')).hash
+   Set-Content -Path $($d.wD, "rsEnvironments.hash" -join '\') -Value (Get-FileHash -Path $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')).hash
    if($role -eq "Pull") {
       Install-WindowsFeature Web-Server
       Install-Certs
       Write-Log -value "Installing PullServer LCM"
-      Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsLCM.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+      Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.prov, "rsLCM.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
       if((Test-Path -Path "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\bin") -eq $false) {
          New-Item -ItemType directory -Path "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\bin"
       }
@@ -225,7 +226,7 @@ Function Install-DSC {
    }
    else {
       Write-Log -value "Installing Client LCM"
-      Invoke-Command -ScriptBlock {PowerShell.exe $($d.wD, $d.mR, "rsLCM.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+      Invoke-Command -ScriptBlock {PowerShell.exe $($d.wD, $d.prov, "rsLCM.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
    }   
    return
 }
@@ -247,7 +248,7 @@ Function Set-Stage {
 ##################################################################################################################################
 Function Create-ScheduledTask {
    Write-Log -value "Creating BasePrep.ps1 scheduled task"
-   schtasks.exe /create /sc Onstart /tn BasePrep /ru System /tr "PowerShell.exe -ExecutionPolicy Bypass -file $($d.wD, $d.mR, $d.bS -join '\')"
+   schtasks.exe /create /sc Onstart /tn BasePrep /ru System /tr "PowerShell.exe -ExecutionPolicy Bypass -file $($d.wD, $d.prov, $d.bS -join '\')"
    return
 }
 
@@ -320,27 +321,17 @@ function Set-MachineKey {
    }
 }
 
-
-##################################################################################################################################
-#                                             Function - Remove BasePrep scheduled task once complete
-##################################################################################################################################
-Function Delete-ScheduledTask {
-   Write-Log -value "Deleting BasePrep.psq scheduled task"
-   schtasks.exe /Delete /TN BasePrep /F
-}
-
-
 ##################################################################################################################################
 #                                             Function - Install .NET 4.5 (if needed)
 ##################################################################################################################################
 Function Install-Net45 {
    Write-Log -value "Installing .NET 4.5"
    if($netVersion -lt 4.5) {
-      if((Test-Path -PathType Container -Path $($d.wD, $d.mR, "net45_InstallDir" -join '\')) -eq $false) {
-         New-Item $($d.wD, $d.mR, "net45_InstallDir" -join '\') -ItemType Directory -Force
+      if((Test-Path -PathType Container -Path $($d.wD, "net45_InstallDir" -join '\')) -eq $false) {
+         New-Item $($d.wD, "net45_InstallDir" -join '\') -ItemType Directory -Force
       }
-      Download-File -path $($d.wD, $d.mR, "net45_InstallDir", "dotNetFx45_Full_setup.exe" -join '\') -url "http://download.microsoft.com/download/B/A/4/BA4A7E71-2906-4B2D-A0E1-80CF16844F5F/dotNetFx45_Full_setup.exe"
-      Start -Wait -NoNewWindow $($d.wD, $d.mR, "net45_InstallDir", "dotNetFx45_Full_setup.exe" -join '\') -ArgumentList '/q /norestart'
+      Download-File -path $($d.wD, "net45_InstallDir", "dotNetFx45_Full_setup.exe" -join '\') -url "http://download.microsoft.com/download/B/A/4/BA4A7E71-2906-4B2D-A0E1-80CF16844F5F/dotNetFx45_Full_setup.exe"
+      Start -Wait -NoNewWindow $($d.wD, "net45_InstallDir", "dotNetFx45_Full_setup.exe" -join '\') -ArgumentList '/q /norestart'
    }
    return
 }
@@ -351,23 +342,23 @@ Function Install-Net45 {
 ##################################################################################################################################
 Function Install-WMF4 {
    if($osVersion -lt 6.2 -and $wmfVersion -lt 4) {
-      if((Test-Path -PathType Container -Path $($d.wD, $d.mR, "wmf4_InstallDir" -join '\')) -eq $false) {
-         Write-Log -value "creating directory $($d.wD, $d.mR, "wmf4_InstallDir" -join '\')"
-         New-Item $($d.wD, $d.mR, "wmf4_InstallDir" -join '\') -ItemType Directory -Force
+      if((Test-Path -PathType Container -Path $($d.wD, "wmf4_InstallDir" -join '\')) -eq $false) {
+         Write-Log -value "creating directory $($d.wD, "wmf4_InstallDir" -join '\')"
+         New-Item $($d.wD, "wmf4_InstallDir" -join '\') -ItemType Directory -Force
       }
       Write-Log -value "Installing WMF 4 on 2k8"
-      Download-File -path $($d.wD, $d.mR, "wmf4_InstallDir", "Windows6.1-KB2819745-x64-MultiPkg.msu" -join '\') -url "http://download.microsoft.com/download/3/D/6/3D61D262-8549-4769-A660-230B67E15B25/Windows6.1-KB2819745-x64-MultiPkg.msu"
-      Start -Wait -NoNewWindow $($d.wD, $d.mR, "wmf4_InstallDir", "Windows6.1-KB2819745-x64-MultiPkg.msu" -join '\') -ArgumentList '/quiet'
+      Download-File -path $($d.wD, "wmf4_InstallDir", "Windows6.1-KB2819745-x64-MultiPkg.msu" -join '\') -url "http://download.microsoft.com/download/3/D/6/3D61D262-8549-4769-A660-230B67E15B25/Windows6.1-KB2819745-x64-MultiPkg.msu"
+      Start -Wait -NoNewWindow $($d.wD, "wmf4_InstallDir", "Windows6.1-KB2819745-x64-MultiPkg.msu" -join '\') -ArgumentList '/quiet'
       return
    }
    if($osVersion -gt 6.2 -and $wmfVersion -lt 4) {
-      if((Test-Path -PathType Container -Path $($d.wD, $d.mR, "wmf4_InstallDir" -join '\')) -eq $false) {
-         Write-Log -value "creating directory $($d.wD, $d.mR, "wmf4_InstallDir" -join '\')"
-         New-Item $($d.wD, $d.mR, "wmf4_InstallDir" -join '\') -ItemType Directory -Force
+      if((Test-Path -PathType Container -Path $($d.wD, "wmf4_InstallDir" -join '\')) -eq $false) {
+         Write-Log -value "creating directory $($d.wD, "wmf4_InstallDir" -join '\')"
+         New-Item $($d.wD, "wmf4_InstallDir" -join '\') -ItemType Directory -Force
       }
       Write-Log -value "Installing WMF 4 on 2012"
-      Download-File -path $($d.wD, $d.mR, "wmf4_InstallDir", "Windows8-RT-KB2799888-x64.msu" -join '\') -url "http://download.microsoft.com/download/3/D/6/3D61D262-8549-4769-A660-230B67E15B25/Windows8-RT-KB2799888-x64.msu"
-      Start -Wait -NoNewWindow $($d.wD, $d.mR, "wmf4_InstallDir", "Windows8-RT-KB2799888-x64.msu" -join '\') -ArgumentList '/quiet'
+      Download-File -path $($d.wD, "wmf4_InstallDir", "Windows8-RT-KB2799888-x64.msu" -join '\') -url "http://download.microsoft.com/download/3/D/6/3D61D262-8549-4769-A660-230B67E15B25/Windows8-RT-KB2799888-x64.msu"
+      Start -Wait -NoNewWindow $($d.wD, "wmf4_InstallDir", "Windows8-RT-KB2799888-x64.msu" -join '\') -ArgumentList '/quiet'
       return
    }
 }
@@ -582,8 +573,6 @@ switch ($stage) {
    }
    4
    {
-      Write-Log -value "Setting DSC Consistency task to run every 3 minutes"
-      schtasks.exe /change /tn "\Microsoft\Windows\Desired State Configuration\Consistency" /ri 3
       Clean-Up
       Break
    }
