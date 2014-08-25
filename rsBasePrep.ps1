@@ -249,7 +249,7 @@ Function Set-Stage {
 ##################################################################################################################################
 Function Create-ScheduledTask {
   Write-Log -value "Creating BasePrep.ps1 scheduled task"
-  schtasks.exe /create /sc Onstart /tn BasePrep /ru System /tr "PowerShell.exe -ExecutionPolicy Bypass -file $($d.wD, $d.prov, $d.bS -join '\')"
+  #schtasks.exe /create /sc Onstart /tn BasePrep /ru System /tr "PowerShell.exe -ExecutionPolicy Bypass -file $($d.wD, $d.prov, $d.bS -join '\')"
   return
 }
 
