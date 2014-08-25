@@ -53,7 +53,7 @@ Function Check-Hash {
          $pullServerPublicIp = $publicIP
       }
    } 
-   $path = $($d.wD + "\" + $d.mR + "\" + "PullServerInfo.ps1")
+   $path = $($d.wD, $d.mR, "PullServerInfo.ps1" -join '\')
    if(Test-Path -Path $path) {
       Remove-Item -Path $path -Force
    }
