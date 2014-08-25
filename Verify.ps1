@@ -27,6 +27,7 @@ Function Download-File {
   $webclient.DownloadFile($url,$path)
   return
 }
+### will pull before running rsEnvironments.ps1
 Function Check-Hash {
   if((Test-Path $($d.wD, "rsEnvironments.hash" -join '\')) -eq $false) {
     Set-Content -Path $($d.wD, "rsEnvironments.hash" -join '\') -Value (Get-FileHash -Path $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')).hash
