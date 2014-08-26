@@ -202,7 +202,7 @@ Function Get-TempPullDSC {
    }
    else {
       chdir $($d.wD)
-      Start -Wait $gitExe -ArgumentList "clone  $("git@github.com:", $d.gCA , $($($d.mR), ".git" -join '') -join '/')"
+      Start -Wait $gitExe -ArgumentList "clone  $((("https://", $d.gAPI, "@github.com" -join ''), $d.gCA, $($d.prov , ".git" -join '')) -join '/') "
    }
 } 
 
