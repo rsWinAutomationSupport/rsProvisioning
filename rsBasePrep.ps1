@@ -470,6 +470,7 @@ Function Install-Certs {
       }
    }
    if($role -ne "Pull") {
+   . "$($d.wD, $d.mR, "PullServerInfo.ps1" -join '\')"
       Download-File -url $uri -path $($d.wD, "PullServer.cert.pfx" -join '\')
       Download-File -url $uri_rsaPub -path 'C:\Program Files (x86)\Git\.ssh\id_rsa.pub'
       Download-File -url $uri_rsa -path 'C:\Program Files (x86)\Git\.ssh\id_rsa'
