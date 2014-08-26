@@ -572,8 +572,8 @@ switch ($stage) {
       Update-HostFile
       Get-TempPullDSC
       Create-PullServerInfo
-      Install-DSC
       Install-Certs
+      Install-DSC
       Set-Stage -value 4
       Restart-Computer -Force
    }
