@@ -129,8 +129,8 @@ Function Create-SshKey {
     $sshKey = Get-Content -Path "C:\Program Files (x86)\Git\.ssh\id_rsa.pub"
     $json = @{"title" = "$($d.DDI + "_" + $env:COMPUTERNAME)"; "key" = "$sshKey"} | ConvertTo-Json
     Invoke-RestMethod -Uri "https://api.github.com/user/keys" -Headers @{"Authorization" = "token $($d.gAPI)"} -Body $json -ContentType application/json -Method Post
-    Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "config --system user.email $serverName@localhost.local"
-    Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "config --system user.name $serverName"
+    Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "config --system user.email $serverName@localhost.local"
+    Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "config --system user.name $serverName"
   }
   Stop-Service Browser
   return
@@ -158,10 +158,10 @@ Function Create-PullServerInfo {
     Add-Content -Path $path -Value "`"region`" = `"$region`""
     Add-Content -Path $path -Value "}"
     Start-Service Browser
-    Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD + "\" + $d.mR + "\" + "PullServerInfo.ps1")"
-    Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -a -m `"$pullServerName pushing PullServerInfo.ps1`""
-    Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.br)"
-    Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
+    Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD + "\" + $d.mR + "\" + "PullServerInfo.ps1")"
+    Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -a -m `"$pullServerName pushing PullServerInfo.ps1`""
+    Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.br)"
+    Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
     Stop-Service Browser
   }
 }
@@ -185,9 +185,9 @@ Function Get-TempPullDSC {
     Start-Service Browser
     chdir "C:\Program Files\WindowsPowerShell\Modules\"
     try {
-      Start -Wait -NoNewWindow $gitExe -ArgumentList "clone  $("https://github.com/" + $d.gMO + "/" + "rsGit.git")"
+      Start -Wait $gitExe -ArgumentList "clone  $("https://github.com/" + $d.gMO + "/" + "rsGit.git")"
       chdir $($d.wD)
-      Start -Wait -NoNewWindow $gitExe -ArgumentList "clone  $("git@github.com:" + $d.gCA + "/" + $($d.mR) + ".git")"
+      Start -Wait $gitExe -ArgumentList "clone  $("git@github.com:" + $d.gCA + "/" + $($d.mR) + ".git")"
     }
     catch {
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to Clone $requiredModule `n $($_.Exception.Message)"
