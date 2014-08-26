@@ -457,6 +457,7 @@ Function Update-HostFile {
 #                                             Function - Install SSL cert used for Client/Pull communications
 ##################################################################################################################################
 Function Install-Certs {
+   . "$($d.wD, $d.mR, "PullServerInfo.ps1" -join '\')"
    Write-Log -value "Installing Certificate"
    $uri = "http://" + $pullServerName + "/" + "PullServer.cert.pfx"
    $uri_rsaPub = "http://" + $pullServerName + "/" + "id_rsa.pub"
@@ -470,7 +471,6 @@ Function Install-Certs {
       }
    }
    if($role -ne "Pull") {
-   . "$($d.wD, $d.mR, "PullServerInfo.ps1" -join '\')"
       Download-File -url $uri -path $($d.wD, "PullServer.cert.pfx" -join '\')
       Download-File -url $uri_rsaPub -path 'C:\Program Files (x86)\Git\.ssh\id_rsa.pub'
       Download-File -url $uri_rsa -path 'C:\Program Files (x86)\Git\.ssh\id_rsa'
