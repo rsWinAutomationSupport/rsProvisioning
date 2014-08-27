@@ -458,6 +458,9 @@ Function Update-HostFile {
 ##################################################################################################################################
 Function Install-Certs {
    . "$($d.wD, $d.mR, "PullServerInfo.ps1" -join '\')"
+   $pullServerName = $pullServerInfo.pullServerName
+   $pullServerPublicIP = $pullserverInfo.pullserverPublicIp
+   $pullServerPrivateIP = $pullServerInfo.pullServerPrivateIp
    Write-Log -value "Installing Certificate"
    $uri = "http://" + $pullServerName + "/" + "PullServer.cert.pfx"
    $uri_rsaPub = "http://" + $pullServerName + "/" + "id_rsa.pub"
