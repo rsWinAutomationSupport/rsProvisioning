@@ -576,8 +576,8 @@ switch ($stage) {
       Set-DataDrive
       New-NetFirewallRule -DisplayName "WINRM" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 5985-5986
       set-item WSMan:\localhost\Client\TrustedHosts * -force
-      Update-HostFile
       Get-TempPullDSC
+      Update-HostFile
       Create-PullServerInfo
       Install-Certs
       Install-DSC
