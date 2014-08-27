@@ -432,6 +432,10 @@ Function Update-XenTools {
 #                                             Function - Add pull server info to HOSTS file
 ##################################################################################################################################
 Function Update-HostFile {
+   . "$($d.wD, $d.mR, "PullServerInfo.ps1" -join '\')"
+   $pullServerName = $pullServerInfo.pullServerName
+   $pullServerPublicIP = $pullserverInfo.pullserverPublicIp
+   $pullServerPrivateIP = $pullServerInfo.pullServerPrivateIp
    if($role -eq "Pull") {
       $hostContent = ((Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -like '10.*').IPAddress + "`t`t`t" + $serverName)
       Add-Content -Path "C:\Windows\System32\Drivers\etc\hosts" -Value $hostContent -Force
