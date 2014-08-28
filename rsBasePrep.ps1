@@ -63,6 +63,7 @@ Function Create-ClientData {
       Add-Content -Value "`"gX`" = `"$($d.gX)`"" -Path $path
       Add-Content -Value "`"gCA`" = `"$($d.gCA)`"" -Path $path
       Add-Content -Value "`"gAPI`" = `"$($d.gAPI)`"" -Path $path
+      Add-Content -Value "`"gMO`" = `"$($d.gMO)`"" -Path $path
       Add-Content -Value "}" -Path $path
    }
 }
