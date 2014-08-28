@@ -418,7 +418,12 @@ Function Update-XenTools {
    if($osVersion -lt "6.3") {
       Write-Log -value "Installing Xen Tools 6.2"
       $path = $($d.wD, "xs-tools-6.2.0.zip" -join '\')
+      try{
       Download-File -url "http://1631170f67e7daa50e95-7dd27d3f3410187707440a293c5d1c09.r5.cf1.rackcdn.com/xs-tools-6.2.0.zip" -path $path
+      }
+      catch {
+      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to Download Xentools `n $($_.Exception.Message)"
+      }
       [System.IO.Compression.ZipFile]::ExtractToDirectory($path, $destination)
       Start -Wait $($d.wD, "xs-tools-6.2.0\installwizard.msi" -join '\' ) -ArgumentList '/qn PATH="C:\Program Files\Citrix\XenTools\"'
    }
