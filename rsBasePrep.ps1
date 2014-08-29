@@ -247,7 +247,7 @@ Function Install-DSC {
       Write-Log -value "Installing PullServer DSC"
       #Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
       #Start-Sleep 60
-      & start -Wait $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')
+      & $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')
    }
    else {
       Write-Log -value "Installing Client LCM"
