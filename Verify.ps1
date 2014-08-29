@@ -107,7 +107,7 @@ Function Check-Hosts {
       Add-Content -Path "${env:windir}\system32\drivers\etc\hosts" -Value $hostEntry -Force -Encoding ASCII
    }
 }
-
+taskkill /F /IM WmiPrvSE.exe
 Function Install-Certs {
    $pullServerName = $pullServerInfo.pullServerName
    $cN = ("CN=" + $pullServerName)
@@ -129,5 +129,3 @@ else {
    Check-Hosts
    Install-Certs
 }
-
-taskkill /F /IM WmiPrvSE.exe
