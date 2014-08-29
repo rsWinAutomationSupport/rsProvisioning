@@ -211,11 +211,17 @@ Function Get-TempPullDSC {
          New-Item -Path "C:\Program Files\WindowsPowerShell\DscService\Modules" -ItemType Container
       }
       Copy-Item $($d.wD, $d.mR, "rsPlatform" -join '\') "C:\Program Files\WindowsPowerShell\Modules" -Recurse
-      Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.prov, "initDSC.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+      try {
+         Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.prov, "initDSC.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+      }
+      catch {
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to install temp DSC `n $($_.Exception.Message)"
+      }
    }
    else {
       chdir $($d.wD)
-      Start -Wait $gitExe -ArgumentList "clone  $((("https://", $d.gAPI, "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/') "
+      Start -Wait "C:\Program Files (x86)\Git\bin\sh.exe" -ArgumentList "--login -i -c ""git clone $((("https://", $d.gAPI, "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/')"""
+      #Start -Wait $gitExe -ArgumentList "clone  $((("https://", $d.gAPI, "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/') "
    }
 } 
 
@@ -239,12 +245,14 @@ Function Install-DSC {
          Copy-Item "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\PSDSCPullServer.config" -Destination "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\web.config"
       }
       Write-Log -value "Installing PullServer DSC"
-      Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
-      Start-Sleep 60
+      #Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+      #Start-Sleep 60
+      start -Wait $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')
    }
    else {
       Write-Log -value "Installing Client LCM"
-      Invoke-Command -ScriptBlock {PowerShell.exe $($d.wD, $d.prov, "rsLCM.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+      #Invoke-Command -ScriptBlock {PowerShell.exe $($d.wD, $d.prov, "rsLCM.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+      start -Wait $($d.wD, $d.prov, "rsLCM.ps1" -join '\')
    }   
    return
 }
@@ -343,11 +351,11 @@ function Set-MachineKey {
 #                                             Function - Install .NET 4.5 (if needed)
 ##################################################################################################################################
 Function Install-Net45 {
-   Write-Log -value "Installing .NET 4.5"
    if($netVersion -lt 4.5) {
       if((Test-Path -PathType Container -Path $($d.wD, "net45_InstallDir" -join '\')) -eq $false) {
          New-Item $($d.wD, "net45_InstallDir" -join '\') -ItemType Directory -Force
       }
+      Write-Log -value "Installing .NET 4.5"
       Download-File -path $($d.wD, "net45_InstallDir", "dotNetFx45_Full_setup.exe" -join '\') -url "http://download.microsoft.com/download/B/A/4/BA4A7E71-2906-4B2D-A0E1-80CF16844F5F/dotNetFx45_Full_setup.exe"
       Start -Wait -NoNewWindow $($d.wD, "net45_InstallDir", "dotNetFx45_Full_setup.exe" -join '\') -ArgumentList '/q /norestart'
    }
@@ -429,7 +437,6 @@ Function Update-XenTools {
       Remove-Item $($d.wD, "Cloud Servers" -join '\') -Force -Recurse
    }
    if($osVersion -lt "6.3") {
-      Write-Log -value "Installing Xen Tools 6.2"
       $path = $($d.wD, "xs-tools-6.2.0.zip" -join '\')
       try{
          Download-File -url "http://1631170f67e7daa50e95-7dd27d3f3410187707440a293c5d1c09.r5.cf1.rackcdn.com/xs-tools-6.2.0.zip" -path $path
@@ -438,10 +445,13 @@ Function Update-XenTools {
          Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to Download Xentools `n $($_.Exception.Message)"
       }
       [System.IO.Compression.ZipFile]::ExtractToDirectory($path, $destination)
+      Write-Log -value "Installing Xen Tools 6.2"
       Start -Wait $($d.wD, "xs-tools-6.2.0\installwizard.msi" -join '\' ) -ArgumentList '/qn PATH="C:\Program Files\Citrix\XenTools\"'
    }
    if($osVersion -gt "6.3") {
-      Restart-Computer -Force
+      ### If osversion 2012 R2 no xentools install needed and no reboot needed, setting stage to 3 and returning to start stage 3
+      Set-Stage -value 3
+      return
    }
 }
 
@@ -573,7 +583,7 @@ switch ($stage) {
       Disable-MSN
       Create-SshKey
       Disable-TOE
-      Start-Sleep 10
+      #Start-Sleep 10
       tzutil /s "Central Standard Time"
       Create-ScheduledTask
       Install-Net45
