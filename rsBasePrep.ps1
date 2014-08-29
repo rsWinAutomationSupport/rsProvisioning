@@ -220,7 +220,7 @@ Function Get-TempPullDSC {
    }
    else {
       chdir $($d.wD)
-      Start -Wait "C:\Program Files (x86)\Git\bin\sh.exe" -ArgumentList "--login -i -c ""git clone $((("https://", $d.gAPI, "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/')"""
+      Start -Wait "C:\Program Files (x86)\Git\bin\sh.exe" -ArgumentList "--login -i -c ""$($gitExe) clone $((("https://", $d.gAPI, "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/')"""
       #Start -Wait $gitExe -ArgumentList "clone  $((("https://", $d.gAPI, "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/') "
    }
 } 
