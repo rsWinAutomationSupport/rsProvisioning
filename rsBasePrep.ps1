@@ -245,14 +245,12 @@ Function Install-DSC {
          Copy-Item "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\PSDSCPullServer.config" -Destination "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\web.config"
       }
       Write-Log -value "Installing PullServer DSC"
-      #Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+      Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
       #Start-Sleep 60
-      & $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')
    }
    else {
       Write-Log -value "Installing Client LCM"
-      #Invoke-Command -ScriptBlock {PowerShell.exe $($d.wD, $d.prov, "rsLCM.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
-      & $($d.wD, $d.prov, "rsLCM.ps1" -join '\')
+      Invoke-Command -ScriptBlock {PowerShell.exe $($d.wD, $d.prov, "rsLCM.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
    }   
    return
 }
