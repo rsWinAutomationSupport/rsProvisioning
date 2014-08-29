@@ -247,12 +247,12 @@ Function Install-DSC {
       Write-Log -value "Installing PullServer DSC"
       #Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
       #Start-Sleep 60
-      start -Wait $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')
+      & start -Wait $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')
    }
    else {
       Write-Log -value "Installing Client LCM"
       #Invoke-Command -ScriptBlock {PowerShell.exe $($d.wD, $d.prov, "rsLCM.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
-      start -Wait $($d.wD, $d.prov, "rsLCM.ps1" -join '\')
+      & $($d.wD, $d.prov, "rsLCM.ps1" -join '\')
    }   
    return
 }
@@ -493,11 +493,11 @@ Function Install-Certs {
    $pullServerName = $pullServerInfo.pullServerName
    $pullServerPublicIP = $pullserverInfo.pullserverPublicIp
    $pullServerPrivateIP = $pullServerInfo.pullServerPrivateIp
-   Write-Log -value "Installing Certificate"
    $uri = "http://" + $pullServerName + "/" + "PullServer.cert.pfx"
    $uri_rsaPub = "http://" + $pullServerName + "/" + "id_rsa.pub"
    $uri_rsa = "http://" + $pullServerName + "/" + "id_rsa.txt"
    if($role -eq "Pull") {
+      Write-Log -value "Installing Certificate"
       if(!(Test-Path -Path "C:\inetpub\wwwroot\id_rsa.txt")) {
          Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa" -Destination "C:\inetpub\wwwroot\id_rsa.txt" -Force
       }
