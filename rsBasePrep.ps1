@@ -220,8 +220,7 @@ Function Get-TempPullDSC {
    }
    else {
       chdir $($d.wD)
-      Start -Wait "C:\Program Files (x86)\Git\bin\sh.exe" -ArgumentList "--login -i -c ""$($gitExe) clone $((("https://", $d.gAPI, "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/')"""
-      #Start -Wait $gitExe -ArgumentList "clone  $((("https://", $d.gAPI, "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/') "
+      Start -Wait $gitExe -ArgumentList "clone  $((("https://", $d.gAPI, "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/') "
    }
 } 
 
@@ -246,7 +245,7 @@ Function Install-DSC {
       }
       Write-Log -value "Installing PullServer DSC"
       Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
-      #Start-Sleep 60
+      Start-Sleep 60
    }
    else {
       Write-Log -value "Installing Client LCM"
