@@ -124,12 +124,10 @@ Function Install-Certs {
 $role = Get-Role
 if($role -eq "Pull") {
    Check-Hash
-   Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
 }
 else {
    Check-Hosts
    Install-Certs
-   Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
 }
 
 taskkill /F /IM WmiPrvSE.exe
