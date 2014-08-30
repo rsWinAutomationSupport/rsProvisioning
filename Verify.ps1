@@ -32,7 +32,8 @@ Function Check-Hash {
    if((Test-Path $($d.wD, "rsEnvironments.hash" -join '\')) -eq $false) {
       Set-Content -Path $($d.wD, "rsEnvironments.hash" -join '\') -Value (Get-FileHash -Path $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')).hash
       chdir $($d.wD, $d.mR -join '\')
-      Start -Wait "C:\Program Files (x86)\Git\bin\sh.exe" -ArgumentList "--login -i -c ""git checkout $($d.br);git reset --hard; git clean -f -d;git pull;"""
+      #Start -Wait "C:\Program Files (x86)\Git\bin\sh.exe" -ArgumentList "--login -i -c ""git checkout $($d.br);git reset --hard; git clean -f -d;git pull;"""
+      Start -Wait git pull origin $($d.br)
       & $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\') -ExecutionPolicy -Bypass -Force
    }
    $checkHash = Get-FileHash $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')
@@ -40,13 +41,15 @@ Function Check-Hash {
    if($checkHash.Hash -ne $currentHash) {
       Set-Content -Path $($d.wD, "rsEnvironments.hash" -join '\') -Value (Get-FileHash -Path $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')).hash
       chdir $($d.wD, $d.mR -join '\')
-      Start -Wait "C:\Program Files (x86)\Git\bin\sh.exe" -ArgumentList "--login -i -c ""git checkout $($d.br);git reset --hard; git clean -f -d;git pull;"""
+      #Start -Wait "C:\Program Files (x86)\Git\bin\sh.exe" -ArgumentList "--login -i -c ""git checkout $($d.br);git reset --hard; git clean -f -d;git pull;"""
+      Start -Wait git pull origin $($d.br)
       & $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\') -ExecutionPolicy -Bypass -Force
    }
    
    else {
       chdir $($d.wD, $d.mR -join '\')
-      Start -Wait "C:\Program Files (x86)\Git\bin\sh.exe" -ArgumentList "--login -i -c ""git checkout $($d.br);git reset --hard; git clean -f -d;git pull;"""
+      #Start -Wait "C:\Program Files (x86)\Git\bin\sh.exe" -ArgumentList "--login -i -c ""git checkout $($d.br);git reset --hard; git clean -f -d;git pull;"""
+      Start -Wait git pull origin $($d.br)
       & $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\') -ExecutionPolicy -Bypass -Force
    }
    
