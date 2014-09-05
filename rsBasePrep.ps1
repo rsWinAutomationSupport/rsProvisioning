@@ -506,7 +506,7 @@ Function Install-Certs {
    if($role -ne "Pull") {
       Copy-Item -Path $($d.wD, $d.mR, "Certs\id_rsa.txt" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa'
       Copy-Item -Path $($d.wD, $d.mR, "Certs\id_rsa.pub" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa.pub'
-      powershell.exe certutil -addstore -f root $($d.wD, "PullServer.cert.pfx" -join '\')
+      powershell.exe certutil -addstore -f root $($d.wD, $d.mR, "Certs\PullServer.cert.pfx" -join '\')
    }
 }
 
