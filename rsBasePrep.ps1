@@ -486,28 +486,27 @@ Function Update-HostFile {
 #                                             Function - Install SSL cert used for Client/Pull communications
 ##################################################################################################################################
 Function Install-Certs {
-   . "$($d.wD, $d.mR, "PullServerInfo.ps1" -join '\')"
-   $pullServerName = $pullServerInfo.pullServerName
-   $pullServerPublicIP = $pullserverInfo.pullserverPublicIp
-   $pullServerPrivateIP = $pullServerInfo.pullServerPrivateIp
-   $uri = "http://" + $pullServerName + "/" + "PullServer.cert.pfx"
-   $uri_rsaPub = "http://" + $pullServerName + "/" + "id_rsa.pub"
-   $uri_rsa = "http://" + $pullServerName + "/" + "id_rsa.txt"
    if($role -eq "Pull") {
       Write-Log -value "Installing Certificate"
-      if(!(Test-Path -Path "C:\inetpub\wwwroot\id_rsa.txt")) {
-         Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa" -Destination "C:\inetpub\wwwroot\id_rsa.txt" -Force
+      if(!(Test-Path -Path $($d.wD, $d.mR, "Certs\id_rsa.txt" -join '\'))) {
+         Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa" -Destination $($d.wD, $d.mR, "Certs\id_rsa.txt" -join '\') -Force
       }
-      if(!(Test-Path -Path "C:\inetpub\wwwroot\id_rsa.pub")) {
-         Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa.pub" -Destination "C:\inetpub\wwwroot\id_rsa.pub" -Force
+      if(!(Test-Path -Path $($d.wD, $d.mR, "Certs\id_rsa.pub" -join '\'))) {
+         Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa.pub" -Destination $($d.wD, $d.mR, "Certs\id_rsa.pub" -join '\') -Force
       }
+      chdir $($d.wD, $d.mR -join '\')
+      Start-Service Browser
+      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certs\id_rsa.txt" -join '\')"
+      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certs\id_rsa.pub" -join '\')"
+      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -a -m `"pushing ssh keys`""
+      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.br)"
+      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
+      Stop-Service Browser
    }
    if($role -ne "Pull") {
-      Download-File -url $uri -path $($d.wD, "PullServer.cert.pfx" -join '\')
-      Download-File -url $uri_rsaPub -path 'C:\Program Files (x86)\Git\.ssh\id_rsa.pub'
-      Download-File -url $uri_rsa -path 'C:\Program Files (x86)\Git\.ssh\id_rsa'
+      Copy-Item -Path $($d.wD, $d.mR, "Certs\id_rsa.txt" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa'
+      Copy-Item -Path $($d.wD, $d.mR, "Certs\id_rsa.pub" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa.pub'
       powershell.exe certutil -addstore -f root $($d.wD, "PullServer.cert.pfx" -join '\')
-      Remove-Item -Path $($d.wD, "PullServer.cert.pfx" -join '\') -Force
    }
 }
 

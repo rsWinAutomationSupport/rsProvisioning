@@ -109,16 +109,10 @@ Function Check-Hosts {
 }
 taskkill /F /IM WmiPrvSE.exe
 Function Install-Certs {
-   $pullServerName = $pullServerInfo.pullServerName
-   $cN = ("CN=" + $pullServerName)
-   $uri = "http://" + $pullServerName + "/" + "PullServer.cert.pfx"
-   $uri_rsaPub = "http://" + $pullServerName + "/" + "id_rsa.pub"
-   $uri_rsa = "http://" + $pullServerName + "/" + "id_rsa.txt"
    Remove-Item -Path 'C:\Program Files (x86)\Git\.ssh\id_rsa*'
    Get-ChildItem Cert:\LocalMachine\Root\ | where {$_.Subject -eq $cN} | Remove-Item
-   Download-File -url $uri -path $($d.wD, "PullServer.cert.pfx" -join '\')
-   Download-File -url $uri_rsaPub -path 'C:\Program Files (x86)\Git\.ssh\id_rsa.pub'
-   Download-File -url $uri_rsa -path 'C:\Program Files (x86)\Git\.ssh\id_rsa'
+   Copy-Item -Path $($d.wD, $d.mR, "Certs\id_rsa.txt" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa'
+   Copy-Item -Path $($d.wD, $d.mR, "Certs\id_rsa.pub" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa.pub'
    powershell.exe certutil -addstore -f root $($d.wD, "PullServer.cert.pfx" -join '\')
 }
 $role = Get-Role
