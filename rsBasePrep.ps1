@@ -488,6 +488,9 @@ Function Update-HostFile {
 Function Install-Certs {
    if($role -eq "Pull") {
       Write-Log -value "Installing Certificate"
+      if(!(Test-Path -Path $($d.wD, $d.mR, "Certs" -join '\'))) {
+          New-Item $($d.wD, $d.mR, "Certs" -join '\') -ItemType Container
+      }
       if(!(Test-Path -Path $($d.wD, $d.mR, "Certs\id_rsa.txt" -join '\'))) {
          Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa" -Destination $($d.wD, $d.mR, "Certs\id_rsa.txt" -join '\') -Force
       }
