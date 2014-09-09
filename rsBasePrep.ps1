@@ -486,30 +486,30 @@ Function Update-HostFile {
 #                                             Function - Install SSL cert used for Client/Pull communications
 ##################################################################################################################################
 Function Install-Certs {
-   if(!(Test-Path -Path $($d.wD, $d.mR, "Certs" -join '\'))) {
-      New-Item $($d.wD, $d.mR, "Certs" -join '\') -ItemType Container
+   if(!(Test-Path -Path $($d.wD, $d.mR, "Certificates" -join '\'))) {
+      New-Item $($d.wD, $d.mR, "Certificates" -join '\') -ItemType Container
    }
    if($role -eq "Pull") {
       Write-Log -value "Installing Certificate"
-      if(!(Test-Path -Path $($d.wD, $d.mR, "Certs\id_rsa.txt" -join '\'))) {
-         Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa" -Destination $($d.wD, $d.mR, "Certs\id_rsa.txt" -join '\') -Force
+      if(!(Test-Path -Path $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\'))) {
+         Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa" -Destination $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\') -Force
       }
-      if(!(Test-Path -Path $($d.wD, $d.mR, "Certs\id_rsa.pub" -join '\'))) {
-         Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa.pub" -Destination $($d.wD, $d.mR, "Certs\id_rsa.pub" -join '\') -Force
+      if(!(Test-Path -Path $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\'))) {
+         Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa.pub" -Destination $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\') -Force
       }
       chdir $($d.wD, $d.mR -join '\')
       Start-Service Browser
-      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certs\id_rsa.txt" -join '\')"
-      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certs\id_rsa.pub" -join '\')"
+      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\')"
+      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\')"
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -a -m `"pushing ssh keys`""
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.br)"
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
       Stop-Service Browser
    }
    if($role -ne "Pull") {
-      Copy-Item -Path $($d.wD, $d.mR, "Certs\id_rsa.txt" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa'
-      Copy-Item -Path $($d.wD, $d.mR, "Certs\id_rsa.pub" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa.pub'
-      powershell.exe certutil -addstore -f root $($d.wD, $d.mR, "Certs\PullServer.cert.pfx" -join '\')
+      Copy-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa'
+      Copy-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa.pub'
+      powershell.exe certutil -addstore -f root $($d.wD, $d.mR, "Certificates\PullServer.cert.pfx" -join '\')
    }
 }
 

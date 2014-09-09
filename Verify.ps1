@@ -111,9 +111,9 @@ taskkill /F /IM WmiPrvSE.exe
 Function Install-Certs {
    Remove-Item -Path 'C:\Program Files (x86)\Git\.ssh\id_rsa*'
    Get-ChildItem Cert:\LocalMachine\Root\ | where {$_.Subject -eq $cN} | Remove-Item
-   Copy-Item -Path $($d.wD, $d.mR, "Certs\id_rsa.txt" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa'
-   Copy-Item -Path $($d.wD, $d.mR, "Certs\id_rsa.pub" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa.pub'
-   powershell.exe certutil -addstore -f root $($d.wD, $d.mR, "Certs\PullServer.cert.pfx" -join '\')
+   Copy-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa'
+   Copy-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa.pub'
+   powershell.exe certutil -addstore -f root $($d.wD, $d.mR, "Certificates\PullServer.cert.pfx" -join '\')
 }
 $role = Get-Role
 if($role -eq "Pull") {
