@@ -57,6 +57,7 @@ Function Create-ClientData {
       Add-Content -Value "`"wD`" = `"$($d.wD)`"" -Path $path
       Add-Content -Value "`"mR`" = `"$($d.mR)`"" -Path $path
       Add-Content -Value "`"prov`" = `"$($d.prov)`"" -Path $path
+      Add-Content -Value "`"provBr`" = `"$($d.provBr)`"" -Path $path
       Add-Content -Value "`"bS`" = `"$($d.bS)`"" -Path $path
       Add-Content -Value "`"gS`" = `"$($d.gS)`"" -Path $path
       Add-Content -Value "`"gPath`" = `"$($d.gPath)`"" -Path $path
