@@ -494,13 +494,10 @@ Function Install-Certs {
       New-Item $($d.wD, $d.mR, "Certificates" -join '\') -ItemType Container
    }
    if($role -eq "Pull") {
+      Remove-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa*" -join '\') -Force
       Write-Log -value "Installing Certificate"
-      if(!(Test-Path -Path $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\'))) {
-         Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa" -Destination $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\') -Force
-      }
-      if(!(Test-Path -Path $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\'))) {
-         Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa.pub" -Destination $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\') -Force
-      }
+      Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa" -Destination $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\') -Force
+      Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa.pub" -Destination $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\') -Force
       chdir $($d.wD, $d.mR -join '\')
       Start-Service Browser
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\')"
