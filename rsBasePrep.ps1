@@ -137,8 +137,11 @@ Function Create-SshKey {
       }
       $keys = Invoke-RestMethod -Uri "https://api.github.com/user/keys" -Headers @{"Authorization" = "token $($d.gAPI)"} -ContentType application/json -Method GET
       $pullKeys = $keys | ? title -eq $($d.DDI + "_" + $pullServerName)
-      foreach($pullKey in $pullKeys) {
-         Invoke-RestMethod -Uri $("https://api.github.com/user/keys/" + $pullKey.id) -Headers @{"Authorization" = "token $($d.gAPI)"} -ContentType application/json -Method DELETE
+      if((($pullKeys).id).count -gt 0) {
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Found an existing SSH Key on github, assuming this is a pullserver is being rebuilt.  Deleting previous SSH Key"
+         foreach($pullKey in $pullKeys) {
+            Invoke-RestMethod -Uri $("https://api.github.com/user/keys/" + $pullKey.id) -Headers @{"Authorization" = "token $($d.gAPI)"} -ContentType application/json -Method DELETE
+         }
       }
       $sshKey = Get-Content -Path "C:\Program Files (x86)\Git\.ssh\id_rsa.pub"
       $json = @{"title" = "$($d.DDI + "_" + $env:COMPUTERNAME)"; "key" = "$sshKey"} | ConvertTo-Json
