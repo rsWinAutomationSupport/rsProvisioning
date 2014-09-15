@@ -73,23 +73,23 @@ Function Create-ClientData {
 }
 
 Function Check-RC {
-   $defaultRegion = $catalog.access.user.'RAX-AUTH:defaultRegion'
    $isRC = $catalog.access.user.roles | ? name -eq "rack_connect"
    if($isRC) {
       do {
+         Write-Host "Running"
          $base = gwmi -n root\wmi -cl CitrixXenStoreBase
          $sid = $base.AddSession("MyNewSession")
          $session = gwmi -n root\wmi -q "select * from CitrixXenStoreSession where SessionId=$($sid.SessionId)"
-         $rcStatus = $session.GetValue("vm-data/user-metadata/rackconnect_automation_status").Value
+         $rcStatus = $session.GetValue("vm-data/user-metadata/rackconnect_automation_status").Value -replace '"',''
          Start-Sleep -Seconds 30
       }
-      while ($rcStatus -ne "deployed")
+      while ($rcStatus -ne "DEPLOYED")
    }
 }
 
 Function Get-AccessIPv4 {
    $uri = (($catalog.access.serviceCatalog | ? name -eq "cloudServersOpenStack").endpoints | ? region -eq $defaultRegion).publicURL
-   $accessIPv4 = (((Invoke-RestMethod -Uri $($uri + "/servers/detail") -Method GET -Headers $AuthToken -ContentType application/json).servers) | ? name -eq $env:COMPUTERNAME).accessIPv4
+   $accessIPv4 = (((Invoke-RestMethod -Uri $($uri + "/servers/detail") -Method GET -Headers $AuthToken -ContentType application/json).servers) | ? { $_.name -eq $env:COMPUTERNAME}).accessIPv4
    return $accessIPv4
 }
 ##################################################################################################################################
@@ -553,6 +553,7 @@ Function Clean-Up {
 . "C:\cloud-automation\secrets.ps1"
    $Global:catalog = Get-ServiceCatalog
    $Global:AuthToken = @{"X-Auth-Token"=($catalog.access.token.id)}
+   $Global:defaultRegion = $catalog.access.user.'RAX-AUTH:defaultRegion'
    $gitExe = "C:\Program Files (x86)\Git\bin\git.exe"
 
 if((Test-Path -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WinDevOps") -eq $false) {
