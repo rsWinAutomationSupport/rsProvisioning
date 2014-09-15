@@ -15,6 +15,9 @@ Function Write-Log {
    return
 }
 
+Function Get-ServiceCatalog {
+   return (Invoke-RestMethod -Uri $("https://identity.api.rackspacecloud.com/v2.0/tokens") -Method POST -Body $(@{"auth" = @{"RAX-KSKEY:apiKeyCredentials" = @{"username" = $($d.cU); "apiKey" = $($d.cAPI)}}} | convertTo-Json) -ContentType application/json)
+}
 
 ##################################################################################################################################
 #                                             Function - Create custom Event Log for DevOps Automation
@@ -69,7 +72,26 @@ Function Create-ClientData {
    }
 }
 
+Function Check-RC {
+   $defaultRegion = $catalog.access.user.'RAX-AUTH:defaultRegion'
+   $isRC = $catalog.access.user.roles | ? name -eq "rack_connect"
+   if($isRC) {
+      do {
+         $base = gwmi -n root\wmi -cl CitrixXenStoreBase
+         $sid = $base.AddSession("MyNewSession")
+         $session = gwmi -n root\wmi -q "select * from CitrixXenStoreSession where SessionId=$($sid.SessionId)"
+         $rcStatus = $session.GetValue("vm-data/user-metadata/rackconnect_automation_status").Value
+         Start-Sleep -Seconds 30
+      }
+      while ($rcStatus -ne "deployed")
+   }
+}
 
+Function Get-AccessIPv4 {
+   $uri = (($catalog.access.serviceCatalog | ? name -eq "cloudServersOpenStack").endpoints | ? region -eq $defaultRegion).publicURL
+   $accessIPv4 = (((Invoke-RestMethod -Uri $($uri + "/servers/detail") -Method GET -Headers $AuthToken -ContentType application/json).servers) | ? name -eq $env:COMPUTERNAME).accessIPv4
+   return $accessIPv4
+}
 ##################################################################################################################################
 #                                             Function - Disable Client For Microsoft Networks
 ##################################################################################################################################
@@ -529,8 +551,9 @@ Function Clean-Up {
 #                                             Setting Script Wide Variables
 ##################################################################################################################################
 . "C:\cloud-automation\secrets.ps1"
+   $Global:catalog = Get-ServiceCatalog
+   $gitExe = "C:\Program Files (x86)\Git\bin\git.exe"
 
-$gitExe = "C:\Program Files (x86)\Git\bin\git.exe"
 if((Test-Path -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WinDevOps") -eq $false) {
    New-Item -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE" -Name "WinDevOps" -Force
    Set-ItemProperty -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WinDevOps" -Name "BuildScript" -Value 1 -Force
@@ -541,16 +564,8 @@ if((Test-Path -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WinDevOps") -eq $fals
     $osVersion = (Get-WmiObject -class Win32_OperatingSystem).Version
 if($role -eq "Pull") {
    $pullServerName = $env:COMPUTERNAME
+   $pullServerPublicIP = Get-AccessIPv4
    $pullServerPrivateIP = (Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -match '^10\.').IPAddress
-   $pullServerPublicIPS = (Get-NetIPAddress).IPv4Address | ? {$_ -notmatch '^10\.' -and $_ -notmatch '^127\.'}
-   foreach($publicIP in $pullServerPublicIPS) 
-   {
-      if($publicIP -ne $null) 
-      {
-         $pullServerPublicIP = $publicIP
-      }
-   } 
-}
 else 
 {
    . "$($d.wD, $d.mR, "PullServerInfo.ps1" -join '\')"
@@ -578,6 +593,8 @@ switch ($stage) {
    {
       Create-Log
       Write-Log -value "Starting Stage 1"
+      Create-ScheduledTask
+      Check-RC
       Create-ClientData
       Set-GitPath
       Disable-MSN
@@ -585,7 +602,6 @@ switch ($stage) {
       Disable-TOE
       #Start-Sleep 10
       tzutil /s "Central Standard Time"
-      Create-ScheduledTask
       Install-Net45
       Install-WMF4
       Set-Stage -value 2
