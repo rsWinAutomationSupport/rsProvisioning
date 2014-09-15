@@ -552,6 +552,7 @@ Function Clean-Up {
 ##################################################################################################################################
 . "C:\cloud-automation\secrets.ps1"
    $Global:catalog = Get-ServiceCatalog
+   $Global:AuthToken = @{"X-Auth-Token"=($catalog.access.token.id)}
    $gitExe = "C:\Program Files (x86)\Git\bin\git.exe"
 
 if((Test-Path -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WinDevOps") -eq $false) {
@@ -566,6 +567,7 @@ if($role -eq "Pull") {
    $pullServerName = $env:COMPUTERNAME
    $pullServerPublicIP = Get-AccessIPv4
    $pullServerPrivateIP = (Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -match '^10\.').IPAddress
+}
 else 
 {
    . "$($d.wD, $d.mR, "PullServerInfo.ps1" -join '\')"
