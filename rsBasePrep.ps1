@@ -527,6 +527,8 @@ Function Update-HostFile {
       }
       $hostContent = $pullServerIP + "`t`t`t" + $pullServerName
       Add-Content -Path "C:\Windows\System32\Drivers\etc\hosts" -Value $hostContent -Force
+      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "PullServerRegion $pullServerRegion ServerRegion $serverRegion"
+      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Adding $hostContent to HostsFile"
       $hostContent = ((Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -like '10.*').IPAddress + "`t`t`t" + $serverName)
       Add-Content -Path "C:\Windows\System32\Drivers\etc\hosts" -Value $hostContent -Force
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Adding $hostContent to HostsFile"
