@@ -19,7 +19,11 @@ Function Get-Role {
    $role = $session.GetValue("vm-data/user-metadata/Role").value -replace "`"", ""
    return $role
 }
-
+Function Get-AccessIPv4 {
+   $uri = (($catalog.access.serviceCatalog | ? name -eq "cloudServersOpenStack").endpoints | ? region -eq $defaultRegion).publicURL
+   $accessIPv4 = (((Invoke-RestMethod -Uri $($uri + "/servers/detail") -Method GET -Headers $AuthToken -ContentType application/json).servers) | ? { $_.name -eq $env:COMPUTERNAME}).accessIPv4
+   return $accessIPv4
+}
 Function Download-File {
    # File download function
    param ( [string]$url, [string]$path )
@@ -50,15 +54,9 @@ Function Check-Hash {
       & $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\') -ExecutionPolicy -Bypass -Force
    }
    
-   
    $pullServerName = $env:COMPUTERNAME
    $pullServerPrivateIP = (Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -match '^10\.').IPAddress
-   $pullServerPublicIPS = (Get-NetIPAddress).IPv4Address | ? {$_ -notmatch '^10\.' -and $_ -notmatch '^127\.'}
-   foreach($publicIP in $pullServerPublicIPS) {
-      if($publicIP -ne $null) {
-         $pullServerPublicIp = $publicIP
-      }
-   } 
+   $pullServerPublicIp = Get-AccessIPv4
    $path = $($d.wD, $d.mR, "PullServerInfo.ps1" -join '\')
    if(Test-Path -Path $path) {
       Remove-Item -Path $path -Force
@@ -115,6 +113,9 @@ Function Install-Certs {
    Copy-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa.pub'
    powershell.exe certutil -addstore -f root $($d.wD, $d.mR, "Certificates\PullServer.cert.pfx" -join '\')
 }
+$Global:catalog = Get-ServiceCatalog
+$Global:AuthToken = @{"X-Auth-Token"=($catalog.access.token.id)}
+$Global:defaultRegion = $catalog.access.user.'RAX-AUTH:defaultRegion'
 $role = Get-Role
 if($role -eq "Pull") {
    Check-Hash
