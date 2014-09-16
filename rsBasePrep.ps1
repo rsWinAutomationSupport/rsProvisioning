@@ -43,8 +43,22 @@ Function Create-Log {
 Function Download-File {
    param ( [string]$url, [string]$path )
    $webclient = New-Object System.Net.WebClient
-   $webclient.DownloadFile($url,$path)
-   Write-Log -value "Downloading $url"
+   $isDone = $false
+   $timeOut = 0
+   do {
+      if($timeOut -ge 5) { break }
+      try {
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Attempting to download $url."
+         $webclient.DownloadFile($url,$path)
+         $isDone = $true
+      }
+      catch {
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to download $url sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
+         $timeOut += 1
+         Start-Sleep -Seconds 30
+      }
+   }
+   while ($isDone -eq $false)
    return
 }
 
@@ -469,20 +483,14 @@ Function Update-XenTools {
       Remove-Item $($d.wD, "Cloud Servers" -join '\') -Force -Recurse
    }
    if($osVersion -lt "6.3") {
-      $isDone = 0
       
-      do {
          $path = $($d.wD, "xs-tools-6.2.0.zip" -join '\')
          try{
             Download-File -url "http://1631170f67e7daa50e95-7dd27d3f3410187707440a293c5d1c09.r5.cf1.rackcdn.com/xs-tools-6.2.0.zip" -path $path
-            $isDone = 1
          }
          catch {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to Download Xentools, sleeping 30 seconds then trying again. `n $($_.Exception.Message)"
-            Start-Sleep -Seconds 30
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to Download Xentools. `n $($_.Exception.Message)"
          }
-      }
-      while ($isDone -lt 1)
       [System.IO.Compression.ZipFile]::ExtractToDirectory($path, $destination)
       Write-Log -value "Installing Xen Tools 6.2"
       Start -Wait $($d.wD, "xs-tools-6.2.0\installwizard.msi" -join '\' ) -ArgumentList '/qn PATH="C:\Program Files\Citrix\XenTools\"'
