@@ -596,7 +596,6 @@ switch ($stage) {
    {
       Create-Log
       Write-Log -value "Starting Stage 1"
-      Create-ScheduledTask
       Check-RC
       Create-ClientData
       Set-GitPath
@@ -605,6 +604,7 @@ switch ($stage) {
       Disable-TOE
       #Start-Sleep 10
       tzutil /s "Central Standard Time"
+      Create-ScheduledTask
       Install-Net45
       Install-WMF4
       Set-Stage -value 2
