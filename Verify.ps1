@@ -4,7 +4,9 @@
 ## This script is executed by the PullServerDSC scheduled task
 ## This script will check the hash value of the PullServerDSC.ps1 config script and if it has been modified it will create a new Hash and execute the PullServerDSC.ps1 script
 ## to start a new DSC configuration on the PullServer
-
+Function Get-ServiceCatalog {
+   return (Invoke-RestMethod -Uri $("https://identity.api.rackspacecloud.com/v2.0/tokens") -Method POST -Body $(@{"auth" = @{"RAX-KSKEY:apiKeyCredentials" = @{"username" = $($d.cU); "apiKey" = $($d.cAPI)}}} | convertTo-Json) -ContentType application/json)
+}
 Function Get-Region {
    $base = gwmi -n root\wmi -cl CitrixXenStoreBase
    $sid = $base.AddSession("MyNewSession")
