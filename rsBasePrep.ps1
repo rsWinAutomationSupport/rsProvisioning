@@ -79,15 +79,15 @@ Function Check-RC {
    $dc = $session.GetValue("vm-data/provider_data/region").value
    $uri = "https://"  + $dc + ".api.rackconnect.rackspace.com/v1/automation_status?format=text"
    try{
-       Invoke-RestMethod -Uri $uri -Method GET -ContentType application/json
-       $isRC = $true
+      Invoke-RestMethod -Uri $uri -Method GET -ContentType application/json
+      $isRC = $true
    }
    catch { $isRC = $false }
    if($isRC) {
       do {
          Write-Host "Running"
          try {
-         $rcStatus = Invoke-RestMethod -Uri $uri -Method GET -ContentType application/json
+            $rcStatus = Invoke-RestMethod -Uri $uri -Method GET -ContentType application/json
          }
          catch { $rsStatus = "FAILED" }
          Start-Sleep -Seconds 30
@@ -469,16 +469,24 @@ Function Update-XenTools {
       Remove-Item $($d.wD, "Cloud Servers" -join '\') -Force -Recurse
    }
    if($osVersion -lt "6.3") {
-      $path = $($d.wD, "xs-tools-6.2.0.zip" -join '\')
-      try{
-         Download-File -url "http://1631170f67e7daa50e95-7dd27d3f3410187707440a293c5d1c09.r5.cf1.rackcdn.com/xs-tools-6.2.0.zip" -path $path
+      $isDone = 0
+      
+      do {
+         $path = $($d.wD, "xs-tools-6.2.0.zip" -join '\')
+         try{
+            Download-File -url "http://1631170f67e7daa50e95-7dd27d3f3410187707440a293c5d1c09.r5.cf1.rackcdn.com/xs-tools-6.2.0.zip" -path $path
+            $isDone = 1
+         }
+         catch {
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to Download Xentools, sleeping 30 seconds then trying again. `n $($_.Exception.Message)"
+            Start-Sleep -Seconds 30
+         }
       }
-      catch {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to Download Xentools `n $($_.Exception.Message)"
-      }
+      while ($isDone -lt 1)
       [System.IO.Compression.ZipFile]::ExtractToDirectory($path, $destination)
       Write-Log -value "Installing Xen Tools 6.2"
       Start -Wait $($d.wD, "xs-tools-6.2.0\installwizard.msi" -join '\' ) -ArgumentList '/qn PATH="C:\Program Files\Citrix\XenTools\"'
+      
    }
    if($osVersion -gt "6.3") {
       ### If osversion 2012 R2 no xentools install needed and no reboot needed, setting stage to 3 and returning to start stage 3
