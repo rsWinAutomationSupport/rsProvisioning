@@ -649,8 +649,8 @@ switch ($stage) {
       New-NetFirewallRule -DisplayName "WINRM" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 5985-5986
       set-item WSMan:\localhost\Client\TrustedHosts * -force
       Get-TempPullDSC
-      Update-HostFile
       Create-PullServerInfo
+      Update-HostFile
       Install-Certs
       Install-DSC
       Set-Stage -value 4
