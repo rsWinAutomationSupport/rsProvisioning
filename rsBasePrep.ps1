@@ -73,19 +73,28 @@ Function Create-ClientData {
 }
 
 Function Check-RC {
-   $isRC = $catalog.access.user.roles | ? name -eq "rack_connect"
+   $base = gwmi -n root\wmi -cl CitrixXenStoreBase 
+   $sid = $base.AddSession("MyNewSession") 
+   $session = gwmi -n root\wmi -q "select * from CitrixXenStoreSession where SessionId=$($sid.SessionId)" 
+   $dc = $session.GetValue("vm-data/provider_data/region").value
+   $uri = "https://"  + $dc + ".api.rackconnect.rackspace.com/v1/automation_status?format=text"
+   try{
+       Invoke-RestMethod -Uri $uri -Method GET -ContentType application/json
+       $isRC = $true
+   }
+   catch { $isRC = $false }
    if($isRC) {
       do {
          Write-Host "Running"
-         $base = gwmi -n root\wmi -cl CitrixXenStoreBase
-         $sid = $base.AddSession("MyNewSession")
-         $session = gwmi -n root\wmi -q "select * from CitrixXenStoreSession where SessionId=$($sid.SessionId)"
-         $rcStatus = $session.GetValue("vm-data/user-metadata/rackconnect_automation_status").Value -replace '"',''
+         try {
+         $rcStatus = Invoke-RestMethod -Uri $uri -Method GET -ContentType application/json
+         }
+         catch { $rsStatus = "FAILED" }
          Start-Sleep -Seconds 30
       }
       while ($rcStatus -ne "DEPLOYED")
    }
-}
+} 
 
 Function Get-AccessIPv4 {
    $uri = (($catalog.access.serviceCatalog | ? name -eq "cloudServersOpenStack").endpoints | ? region -eq $defaultRegion).publicURL
@@ -551,9 +560,6 @@ Function Clean-Up {
 #                                             Setting Script Wide Variables
 ##################################################################################################################################
 . "C:\cloud-automation\secrets.ps1"
-   $Global:catalog = Get-ServiceCatalog
-   $Global:AuthToken = @{"X-Auth-Token"=($catalog.access.token.id)}
-   $Global:defaultRegion = $catalog.access.user.'RAX-AUTH:defaultRegion'
    $gitExe = "C:\Program Files (x86)\Git\bin\git.exe"
 
 if((Test-Path -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WinDevOps") -eq $false) {
@@ -565,6 +571,9 @@ if((Test-Path -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WinDevOps") -eq $fals
     $serverName = $env:COMPUTERNAME
     $osVersion = (Get-WmiObject -class Win32_OperatingSystem).Version
 if($role -eq "Pull") {
+   $Global:catalog = Get-ServiceCatalog
+   $Global:AuthToken = @{"X-Auth-Token"=($catalog.access.token.id)}
+   $Global:defaultRegion = $catalog.access.user.'RAX-AUTH:defaultRegion'
    $pullServerName = $env:COMPUTERNAME
    $pullServerPublicIP = Get-AccessIPv4
    $pullServerPrivateIP = (Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -match '^10\.').IPAddress
