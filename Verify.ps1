@@ -113,11 +113,11 @@ Function Install-Certs {
    Copy-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa.pub'
    powershell.exe certutil -addstore -f root $($d.wD, $d.mR, "Certificates\PullServer.cert.pfx" -join '\')
 }
+$role = Get-Role
+if($role -eq "Pull") {
 $Global:catalog = Get-ServiceCatalog
 $Global:AuthToken = @{"X-Auth-Token"=($catalog.access.token.id)}
 $Global:defaultRegion = $catalog.access.user.'RAX-AUTH:defaultRegion'
-$role = Get-Role
-if($role -eq "Pull") {
    Check-Hash
 }
 else {
