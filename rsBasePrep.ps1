@@ -515,6 +515,7 @@ Function Update-HostFile {
    if($role -eq "Pull") {
       $hostContent = ((Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -like '10.*').IPAddress + "`t`t`t" + $serverName)
       Add-Content -Path "C:\Windows\System32\Drivers\etc\hosts" -Value $hostContent -Force
+      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Adding $hostContent to PullServer Hosts File"
       return
    }
    else {
@@ -528,6 +529,7 @@ Function Update-HostFile {
       Add-Content -Path "C:\Windows\System32\Drivers\etc\hosts" -Value $hostContent -Force
       $hostContent = ((Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -like '10.*').IPAddress + "`t`t`t" + $serverName)
       Add-Content -Path "C:\Windows\System32\Drivers\etc\hosts" -Value $hostContent -Force
+      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Adding $hostContent to HostsFile"
       return
    }
 }
