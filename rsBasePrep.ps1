@@ -112,14 +112,44 @@ Function Check-RC {
 
 Function Get-AccessIPv4 {
    $uri = (($catalog.access.serviceCatalog | ? name -eq "cloudServersOpenStack").endpoints | ? region -eq $defaultRegion).publicURL
-   $accessIPv4 = (((Invoke-RestMethod -Uri $($uri + "/servers/detail") -Method GET -Headers $AuthToken -ContentType application/json).servers) | ? { $_.name -eq $env:COMPUTERNAME}).accessIPv4
+   $isDone = $false
+   $timeOut = 0
+   do {
+      if($timeOut -ge 5) { break }
+      try {
+         $accessIPv4 = (((Invoke-RestMethod -Uri $($uri + "/servers/detail") -Method GET -Headers $AuthToken -ContentType application/json).servers) | ? { $_.name -eq $env:COMPUTERNAME}).accessIPv4
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Retrieving accessIPv4 address $accessIPv4"
+         $isDone = $true
+      }
+      catch {
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to retrieve accessIPv4 address, sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
+         $timeOut += 1
+         Start-Sleep -Seconds 30
+      }
+   }
+   while ($isDone -ne $false)
    return $accessIPv4
 }
 ##################################################################################################################################
 #                                             Function - Disable Client For Microsoft Networks
 ##################################################################################################################################
 Function Disable-MSN {
-   (Get-NetAdapter).Name | % {Set-NetAdapterBinding -Name $_ -DisplayName "Client for Microsoft Networks" -Enabled $false}
+   $isDone = $false
+   $timeOut = 0
+   do {
+      if($timeOut -ge 5) { break }
+      try {
+         (Get-NetAdapter).Name | % {Set-NetAdapterBinding -Name $_ -DisplayName "Client for Microsoft Networks" -Enabled $false}
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Disabling MSN on all adapters"
+         $isDone = $true
+      }
+      catch {
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to Disable MSN on adapters, sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
+         $timeOut += 1
+         Start-Sleep -Seconds 30
+      }
+   }
+   while ($isDone -ne $false)
    return
 }
 
@@ -245,31 +275,83 @@ Function Set-GitPath {
 Function Get-TempPullDSC {
    if($role -eq "Pull") {
       Start-Service Browser
-      chdir "C:\Program Files\WindowsPowerShell\Modules\"
-      try {
-         Start -Wait $gitExe -ArgumentList "clone  $("https://github.com", $d.gMO, "rsGit.git" -join '/')"
-         chdir $($d.wD)
-         Start -Wait $gitExe -ArgumentList "clone  $("git@github.com:", $d.gCA , $($($d.mR), ".git" -join '') -join '/')"
+      $isDone = $false
+      $timeOut = 0
+      do {
+         if($timeOut -ge 5) { break }
+         try {
+            chdir "C:\Program Files\WindowsPowerShell\Modules\"
+            Start -Wait $gitExe -ArgumentList "clone  $("https://github.com", $d.gMO, "rsGit.git" -join '/')"
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning $("https://github.com", $d.gMO, "rsGit.git" -join '/')"
+            $isDone = $true
+         }
+         catch {
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to clone $("https://github.com", $d.gMO, "rsGit.git" -join '/'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
+            $timeOut += 1
+            Start-Sleep -Seconds 30
+         }
       }
-      catch {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to Clone $requiredModule `n $($_.Exception.Message)"
-      }
+      while ($isDone -ne $false)
       
+      $isDone = $false
+      $timeOut = 0
+      do {
+         if($timeOut -ge 5) { break }
+         try {
+            chdir $($d.wD)
+            Start -Wait $gitExe -ArgumentList "clone  $(("git@github.com:", $d.gCA -join ''), $($($d.mR), ".git" -join '') -join '/')"
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning $(("git@github.com:", $d.gCA -join ''), $($($d.mR), ".git" -join '') -join '/')"
+            $isDone = $true
+         }
+         catch {
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to clone $(("git@github.com:", $d.gCA -join ''), $($($d.mR), ".git" -join '') -join '/'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
+            $timeOut += 1
+            Start-Sleep -Seconds 30
+         }
+      }
+      while ($isDone -ne $false)
       Stop-Service Browser
       if((Test-Path -Path "C:\Program Files\WindowsPowerShell\DscService\Modules" -PathType Container) -eq $false) {
          New-Item -Path "C:\Program Files\WindowsPowerShell\DscService\Modules" -ItemType Container
       }
       Copy-Item $($d.wD, $d.mR, "rsPlatform" -join '\') "C:\Program Files\WindowsPowerShell\Modules" -Recurse
-      try {
-         Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.prov, "initDSC.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+      
+      
+      $isDone = $false
+      $timeOut = 0
+      do {
+         if($timeOut -ge 5) { break }
+         try {
+            Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.prov, "initDSC.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing inital temporary DSC configuration $($d.wD, $d.prov, "initDSC.ps1" -join '\')"
+            $isDone = $true
+         }
+         catch {
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to install intial temporary DSC configuration $($d.wD, $d.prov, "initDSC.ps1" -join '\'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
+            $timeOut += 1
+            Start-Sleep -Seconds 30
+         }
       }
-      catch {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to install temp DSC `n $($_.Exception.Message)"
-      }
+      while ($isDone -ne $false)
    }
    else {
-      chdir $($d.wD)
-      Start -Wait $gitExe -ArgumentList "clone  $((("https://", $d.gAPI, "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/') "
+      $isDone = $false
+      $timeOut = 0
+      do {
+         if($timeOut -ge 5) { break }
+         try {
+            chdir $($d.wD)
+            Start -Wait $gitExe -ArgumentList "clone  $((("https://", $d.gAPI, "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/') "
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning $($d.mR , ".git" -join '') $((("https://", "##REDACTED_GITHUB_APIKEY##", "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/')"
+            $isDone = $true
+         }
+         catch {
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to Clone $($d.mR , ".git" -join '') $((("https://", "##REDACTED_GITHUB_APIKEY##", "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
+            $timeOut += 1
+            Start-Sleep -Seconds 30
+         }
+      }
+      while ($isDone -ne $false)
    }
 } 
 
@@ -277,12 +359,46 @@ Function Get-TempPullDSC {
 #                                             Function - Install DSC (all nodes)
 ##################################################################################################################################
 Function Install-DSC {
+   ### Insall LCM on Current server
+   $isDone = $false
+   $timeOut = 0
+   do {
+      if($timeOut -ge 5) { break }
+      try {
+         Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.prov, "rsLCM.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing LCM $($d.wD, $d.prov, "rsLCM.ps1" -join '\')"
+         $isDone = $true
+      }
+      catch {
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to install LCM $($d.wD, $d.prov, "rsLCM.ps1" -join '\'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
+         $timeOut += 1
+         Start-Sleep -Seconds 30
+      }
+   }
+   while ($isDone -ne $false)
+   ### Pullserver specific tasks, install WindowsFeature Web-Service, install SSL certificates then run rsEnvironments.ps1 to install DSC
    if($role -eq "Pull") {
       Set-Content -Path $($d.wD, "rsEnvironments.hash" -join '\') -Value (Get-FileHash -Path $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')).hash
-      Install-WindowsFeature Web-Server
+      ### Install WindowsFeature Web-Service
+      $isDone = $false
+      $timeOut = 0
+      do {
+         if($timeOut -ge 5) { break }
+         try {
+            Install-WindowsFeature Web-Server
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing WindowsFeature Web-Server"
+            $isDone = $true
+         }
+         catch {
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to install WindowsFeature Web-Server, sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
+            $timeOut += 1
+            Start-Sleep -Seconds 30
+         }
+      }
+      while ($isDone -ne $false)
+      ### Install SSL certificates on pullserver
       Install-Certs
-      Write-Log -value "Installing PullServer LCM"
-      Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.prov, "rsLCM.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+      ### Copy required files for PSDDesiredStateCofngiuration website
       if((Test-Path -Path "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\bin") -eq $false) {
          New-Item -ItemType directory -Path "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\bin"
       }
@@ -292,14 +408,44 @@ Function Install-DSC {
       if((Test-Path "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\web.config") -eq $false) {
          Copy-Item "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\PSDSCPullServer.config" -Destination "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\web.config"
       }
-      Write-Log -value "Installing PullServer DSC"
-      Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
-      Start-Sleep 60
+      ### Run rsEnvironments.ps1 to install DSC on pullserver
+      $isDone = $false
+      $timeOut = 0
+      do {
+         if($timeOut -ge 5) { break }
+         try {
+            Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing DSC $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')"
+            $isDone = $true
+         }
+         catch {
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to install DSC $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
+            $timeOut += 1
+            Start-Sleep -Seconds 30
+         }
+      }
+      while ($isDone -ne $false)
+      ### Watch powershell task during DSC install and wait for completion
+      $timeOut = 0
+      do
+      {
+         if($timeOut -ge 60) { 
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Installing DSC exceeded 10 minutes during install breaking out of loop"
+            break 
+         }
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Checking status of DSC installation"
+         $owners = @{}
+         try{
+            gwmi win32_process | % {$owners[$_.handle] = $_.getowner().user}
+         }
+         catch{}
+         $process = get-process powershell -ErrorAction SilentlyContinue | select processname,Id,@{l="Owner";e={$owners[$_.id.tostring()]}}
+         $systemProcess = $process | ? Owner -eq "SYSTEM" -ErrorAction SilentlyContinue
+         $timeOut += 1
+         Start-sleep -Seconds 10
+      }
+      while ( $systemProcess.processName.count -gt 1 )
    }
-   else {
-      Write-Log -value "Installing Client LCM"
-      Invoke-Command -ScriptBlock {PowerShell.exe $($d.wD, $d.prov, "rsLCM.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
-   }   
    return
 }
 
@@ -581,7 +727,13 @@ Function Clean-Up {
 ##################################################################################################################################
 #                                             Setting Script Wide Variables
 ##################################################################################################################################
-. "C:\cloud-automation\secrets.ps1"
+try {
+   . "C:\cloud-automation\secrets.ps1"
+}
+catch {
+   Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to load secrets file `n $($_.Exception.Message)"
+}   
+   
    $gitExe = "C:\Program Files (x86)\Git\bin\git.exe"
 
 if((Test-Path -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WinDevOps") -eq $false) {
@@ -612,6 +764,20 @@ else
     $currentDate = (get-date).tostring("mm_dd_yyyy-hh_mm_s")
     $wmfVersion = $PSVersionTable.PSVersion.Major
     $netVersion = (Get-ItemProperty -Path "hklm:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full").Version
+    $currentValues = @{
+    "stage" = $stage;
+    "role" = $role;
+    "serverName" = $serverName;
+    "osVersion" = $osVersion;
+    "pullServerName" = $pullServerName;
+    "pullServerPublicIP" = $pullServerPublicIP;
+    "pullServerPrivateIP" = $pullServerPrivateIP;
+    "serverRegion" = $serverRegion;
+    "pullServerRegion" = $pullServerRegion;
+    "wmfVersion" = $wmfVersion;
+    "netVersion" = $netVersion;
+    }
+    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Current variable values during this iteration, $currentValues"
 ##################################################################################################################################
 
 
