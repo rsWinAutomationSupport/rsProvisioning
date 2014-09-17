@@ -675,8 +675,9 @@ Function Update-XenTools {
    if($osVersion -gt "6.3") {
       ### If osversion 2012 R2 no xentools install needed and no reboot needed, setting stage to 3 and returning to start stage 3
       Set-Stage -value 3
-      return
+      Restart-Computer -Force
    }
+   return
 }
 
 
