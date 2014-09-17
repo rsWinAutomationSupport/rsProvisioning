@@ -46,14 +46,17 @@ Function Download-File {
    $isDone = $false
    $timeOut = 0
    do {
-      if($timeOut -ge 5) { break }
+      if($timeOut -ge 5) { 
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
+         break 
+      }
       try {
          Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Attempting to download $url."
          $webclient.DownloadFile($url,$path)
          $isDone = $true
       }
       catch {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to download $url sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to download $url sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
          $timeOut += 1
          Start-Sleep -Seconds 30
       }
@@ -115,14 +118,17 @@ Function Get-AccessIPv4 {
    $isDone = $false
    $timeOut = 0
    do {
-      if($timeOut -ge 5) { break }
+      if($timeOut -ge 5) { 
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
+         break 
+      }
       try {
          $accessIPv4 = (((Invoke-RestMethod -Uri $($uri + "/servers/detail") -Method GET -Headers $AuthToken -ContentType application/json).servers) | ? { $_.name -eq $env:COMPUTERNAME}).accessIPv4
          Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Retrieving accessIPv4 address $accessIPv4"
          $isDone = $true
       }
       catch {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to retrieve accessIPv4 address, sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to retrieve accessIPv4 address, sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
          $timeOut += 1
          Start-Sleep -Seconds 30
       }
@@ -137,14 +143,17 @@ Function Disable-MSN {
    $isDone = $false
    $timeOut = 0
    do {
-      if($timeOut -ge 5) { break }
+      if($timeOut -ge 5) { 
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
+         break 
+      }
       try {
          (Get-NetAdapter).Name | % {Set-NetAdapterBinding -Name $_ -DisplayName "Client for Microsoft Networks" -Enabled $false}
          Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Disabling MSN on all adapters"
          $isDone = $true
       }
       catch {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to Disable MSN on adapters, sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to Disable MSN on adapters, sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
          $timeOut += 1
          Start-Sleep -Seconds 30
       }
@@ -278,7 +287,10 @@ Function Get-TempPullDSC {
       $isDone = $false
       $timeOut = 0
       do {
-         if($timeOut -ge 5) { break }
+      if($timeOut -ge 5) { 
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
+         break 
+      }
          try {
             chdir "C:\Program Files\WindowsPowerShell\Modules\"
             Start -Wait $gitExe -ArgumentList "clone  $("https://github.com", $d.gMO, "rsGit.git" -join '/')"
@@ -286,7 +298,7 @@ Function Get-TempPullDSC {
             $isDone = $true
          }
          catch {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to clone $("https://github.com", $d.gMO, "rsGit.git" -join '/'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone $("https://github.com", $d.gMO, "rsGit.git" -join '/'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
             $timeOut += 1
             Start-Sleep -Seconds 30
          }
@@ -296,7 +308,10 @@ Function Get-TempPullDSC {
       $isDone = $false
       $timeOut = 0
       do {
-         if($timeOut -ge 5) { break }
+      if($timeOut -ge 5) { 
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
+         break 
+      }
          try {
             chdir $($d.wD)
             Start -Wait $gitExe -ArgumentList "clone  $(("git@github.com:", $d.gCA -join ''), $($($d.mR), ".git" -join '') -join '/')"
@@ -304,7 +319,7 @@ Function Get-TempPullDSC {
             $isDone = $true
          }
          catch {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to clone $(("git@github.com:", $d.gCA -join ''), $($($d.mR), ".git" -join '') -join '/'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone $(("git@github.com:", $d.gCA -join ''), $($($d.mR), ".git" -join '') -join '/'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
             $timeOut += 1
             Start-Sleep -Seconds 30
          }
@@ -320,14 +335,17 @@ Function Get-TempPullDSC {
       $isDone = $false
       $timeOut = 0
       do {
-         if($timeOut -ge 5) { break }
+      if($timeOut -ge 5) { 
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
+         break 
+      }
          try {
             Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.prov, "initDSC.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing inital temporary DSC configuration $($d.wD, $d.prov, "initDSC.ps1" -join '\')"
             $isDone = $true
          }
          catch {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to install intial temporary DSC configuration $($d.wD, $d.prov, "initDSC.ps1" -join '\'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to install intial temporary DSC configuration $($d.wD, $d.prov, "initDSC.ps1" -join '\'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
             $timeOut += 1
             Start-Sleep -Seconds 30
          }
@@ -338,7 +356,10 @@ Function Get-TempPullDSC {
       $isDone = $false
       $timeOut = 0
       do {
-         if($timeOut -ge 5) { break }
+      if($timeOut -ge 5) { 
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
+         break 
+      }
          try {
             chdir $($d.wD)
             Start -Wait $gitExe -ArgumentList "clone  $((("https://", $d.gAPI, "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/') "
@@ -346,7 +367,7 @@ Function Get-TempPullDSC {
             $isDone = $true
          }
          catch {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to Clone $($d.mR , ".git" -join '') $((("https://", "##REDACTED_GITHUB_APIKEY##", "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to Clone $($d.mR , ".git" -join '') $((("https://", "##REDACTED_GITHUB_APIKEY##", "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
             $timeOut += 1
             Start-Sleep -Seconds 30
          }
@@ -363,14 +384,17 @@ Function Install-DSC {
    $isDone = $false
    $timeOut = 0
    do {
-      if($timeOut -ge 5) { break }
+      if($timeOut -ge 5) { 
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
+         break 
+      }
       try {
          Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.prov, "rsLCM.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
          Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing LCM $($d.wD, $d.prov, "rsLCM.ps1" -join '\')"
          $isDone = $true
       }
       catch {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to install LCM $($d.wD, $d.prov, "rsLCM.ps1" -join '\'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to install LCM $($d.wD, $d.prov, "rsLCM.ps1" -join '\'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
          $timeOut += 1
          Start-Sleep -Seconds 30
       }
@@ -383,14 +407,17 @@ Function Install-DSC {
       $isDone = $false
       $timeOut = 0
       do {
-         if($timeOut -ge 5) { break }
+      if($timeOut -ge 5) { 
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
+         break 
+      }
          try {
             Install-WindowsFeature Web-Server
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing WindowsFeature Web-Server"
             $isDone = $true
          }
          catch {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to install WindowsFeature Web-Server, sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to install WindowsFeature Web-Server, sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
             $timeOut += 1
             Start-Sleep -Seconds 30
          }
@@ -412,14 +439,17 @@ Function Install-DSC {
       $isDone = $false
       $timeOut = 0
       do {
-         if($timeOut -ge 5) { break }
+      if($timeOut -ge 5) { 
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
+         break 
+      }
          try {
             Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing DSC $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')"
             $isDone = $true
          }
          catch {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to install DSC $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to install DSC $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
             $timeOut += 1
             Start-Sleep -Seconds 30
          }
