@@ -133,7 +133,7 @@ Function Get-AccessIPv4 {
          Start-Sleep -Seconds 30
       }
    }
-   while ($isDone -ne $false)
+   while ($isDone -eq $false)
    return $accessIPv4
 }
 ##################################################################################################################################
@@ -158,7 +158,7 @@ Function Disable-MSN {
          Start-Sleep -Seconds 30
       }
    }
-   while ($isDone -ne $false)
+   while ($isDone -eq $false)
    return
 }
 
@@ -303,7 +303,7 @@ Function Get-TempPullDSC {
             Start-Sleep -Seconds 30
          }
       }
-      while ($isDone -ne $false)
+      while ($isDone -eq $false)
       
       $isDone = $false
       $timeOut = 0
@@ -324,7 +324,7 @@ Function Get-TempPullDSC {
             Start-Sleep -Seconds 30
          }
       }
-      while ($isDone -ne $false)
+      while ($isDone -eq $false)
       Stop-Service Browser
       if((Test-Path -Path "C:\Program Files\WindowsPowerShell\DscService\Modules" -PathType Container) -eq $false) {
          New-Item -Path "C:\Program Files\WindowsPowerShell\DscService\Modules" -ItemType Container
@@ -350,7 +350,7 @@ Function Get-TempPullDSC {
             Start-Sleep -Seconds 30
          }
       }
-      while ($isDone -ne $false)
+      while ($isDone -eq $false)
    }
    else {
       $isDone = $false
@@ -372,7 +372,7 @@ Function Get-TempPullDSC {
             Start-Sleep -Seconds 30
          }
       }
-      while ($isDone -ne $false)
+      while ($isDone -eq $false)
    }
 } 
 
@@ -399,7 +399,7 @@ Function Install-DSC {
          Start-Sleep -Seconds 30
       }
    }
-   while ($isDone -ne $false)
+   while ($isDone -eq $false)
    ### Pullserver specific tasks, install WindowsFeature Web-Service, install SSL certificates then run rsEnvironments.ps1 to install DSC
    if($role -eq "Pull") {
       Set-Content -Path $($d.wD, "rsEnvironments.hash" -join '\') -Value (Get-FileHash -Path $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')).hash
@@ -422,7 +422,7 @@ Function Install-DSC {
             Start-Sleep -Seconds 30
          }
       }
-      while ($isDone -ne $false)
+      while ($isDone -eq $false)
       ### Install SSL certificates on pullserver
       Install-Certs
       ### Copy required files for PSDDesiredStateCofngiuration website
@@ -454,7 +454,7 @@ Function Install-DSC {
             Start-Sleep -Seconds 30
          }
       }
-      while ($isDone -ne $false)
+      while ($isDone -eq $false)
       ### Watch powershell task during DSC install and wait for completion
       $timeOut = 0
       do
