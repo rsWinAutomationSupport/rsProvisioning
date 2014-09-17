@@ -123,8 +123,8 @@ Function Get-AccessIPv4 {
          break 
       }
       try {
-         $accessIPv4 = (((Invoke-RestMethod -Uri $($uri + "/servers/detail") -Method GET -Headers $AuthToken -ContentType application/json).servers) | ? { $_.name -eq $env:COMPUTERNAME}).accessIPv4
          Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Retrieving accessIPv4 address $accessIPv4"
+         $accessIPv4 = (((Invoke-RestMethod -Uri $($uri + "/servers/detail") -Method GET -Headers $AuthToken -ContentType application/json).servers) | ? { $_.name -eq $env:COMPUTERNAME}).accessIPv4
          $isDone = $true
       }
       catch {
@@ -148,8 +148,8 @@ Function Disable-MSN {
          break 
       }
       try {
-         (Get-NetAdapter).Name | % {Set-NetAdapterBinding -Name $_ -DisplayName "Client for Microsoft Networks" -Enabled $false}
          Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Disabling MSN on all adapters"
+         (Get-NetAdapter).Name | % {Set-NetAdapterBinding -Name $_ -DisplayName "Client for Microsoft Networks" -Enabled $false}
          $isDone = $true
       }
       catch {
@@ -293,8 +293,8 @@ Function Get-TempPullDSC {
          }
          try {
             chdir "C:\Program Files\WindowsPowerShell\Modules\"
-            Start -Wait $gitExe -ArgumentList "clone  $("https://github.com", $d.gMO, "rsGit.git" -join '/')"
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning $("https://github.com", $d.gMO, "rsGit.git" -join '/')"
+            Start -Wait $gitExe -ArgumentList "clone  $("https://github.com", $d.gMO, "rsGit.git" -join '/')"
             $isDone = $true
          }
          catch {
@@ -314,8 +314,8 @@ Function Get-TempPullDSC {
          }
          try {
             chdir $($d.wD)
-            Start -Wait $gitExe -ArgumentList "clone  $(("git@github.com:", $d.gCA -join ''), $($($d.mR), ".git" -join '') -join '/')"
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning $(("git@github.com:", $d.gCA -join ''), $($($d.mR), ".git" -join '') -join '/')"
+            Start -Wait $gitExe -ArgumentList "clone  $(("git@github.com:", $d.gCA -join ''), $($($d.mR), ".git" -join '') -join '/')"
             $isDone = $true
          }
          catch {
@@ -340,8 +340,8 @@ Function Get-TempPullDSC {
             break 
          }
          try {
-            Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.prov, "initDSC.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing inital temporary DSC configuration $($d.wD, $d.prov, "initDSC.ps1" -join '\')"
+            Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.prov, "initDSC.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
             $isDone = $true
          }
          catch {
@@ -362,8 +362,8 @@ Function Get-TempPullDSC {
          }
          try {
             chdir $($d.wD)
-            Start -Wait $gitExe -ArgumentList "clone  $((("https://", $d.gAPI, "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/') "
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning $($d.mR , ".git" -join '') $((("https://", "##REDACTED_GITHUB_APIKEY##", "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/')"
+            Start -Wait $gitExe -ArgumentList "clone  $((("https://", $d.gAPI, "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/') "
             $isDone = $true
          }
          catch {
@@ -389,8 +389,8 @@ Function Install-DSC {
          break 
       }
       try {
-         Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.prov, "rsLCM.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
          Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing LCM $($d.wD, $d.prov, "rsLCM.ps1" -join '\')"
+         Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.prov, "rsLCM.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
          $isDone = $true
       }
       catch {
@@ -412,8 +412,8 @@ Function Install-DSC {
             break 
          }
          try {
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing WindowsFeature Web-Server"
             Install-WindowsFeature Web-Server
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing WindowsFeature Web-Server"
             $isDone = $true
          }
          catch {
@@ -444,8 +444,8 @@ Function Install-DSC {
             break 
          }
          try {
-            Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing DSC $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')"
+            Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
             $isDone = $true
          }
          catch {
