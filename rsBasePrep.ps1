@@ -93,7 +93,32 @@ Function Check-RC {
    $base = gwmi -n root\wmi -cl CitrixXenStoreBase 
    $sid = $base.AddSession("MyNewSession") 
    $session = gwmi -n root\wmi -q "select * from CitrixXenStoreSession where SessionId=$($sid.SessionId)" 
-   $dc = $session.GetValue("vm-data/provider_data/region").value
+   $isDone = $false
+   $timeOut = 0
+   do {
+      if($timeOut -ge 5) { 
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
+         break 
+      }
+      try {
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Retrieving region from xenstore"
+         $dc = $session.GetValue("vm-data/provider_data/region").value
+         if($dc) {
+            $isDone = $true
+         }
+         else {
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to retrieve region from xenstore, sleeping for 30 seconds then trying again. "
+            $timeOut += 1
+            Start-Sleep -Seconds 30
+         }
+      }
+      catch {
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to retrieve region from xenstore, sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
+         $timeOut += 1
+         Start-Sleep -Seconds 30
+      }
+   }
+   while ($isDone -eq $false)
    $uri = "https://"  + $dc + ".api.rackconnect.rackspace.com/v1/automation_status?format=text"
    try{
       Invoke-RestMethod -Uri $uri -Method GET -ContentType application/json
@@ -412,7 +437,7 @@ Function Install-DSC {
             break 
          }
          try {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing WindowsFeature Web-Server"
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing WindowsFeature Web-Server"
             Install-WindowsFeature Web-Server
             $isDone = $true
          }
