@@ -802,7 +802,7 @@ else
     "pullServerRegion" = $pullServerRegion;
     "wmfVersion" = $wmfVersion;
     "netVersion" = $netVersion;
-    }
+    } | ConvertTo-Json
     Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Current variable values during this iteration, $currentValues"
 ##################################################################################################################################
 
