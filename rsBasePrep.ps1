@@ -320,7 +320,13 @@ Function Get-TempPullDSC {
             chdir "C:\Program Files\WindowsPowerShell\Modules\"
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning $("https://github.com", $d.gMO, "rsGit.git" -join '/')"
             Start -Wait $gitExe -ArgumentList "clone  $("https://github.com", $d.gMO, "rsGit.git" -join '/')"
-            $isDone = $true
+            if(Test-Path -Path "C:\Program Files\WindowsPowerShell\Modules\rsGit") {
+               $isDone = $true
+            }
+            else {
+               Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone $("https://github.com", $d.gMO, "rsGit.git" -join '/'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
+               $timeOut += 1
+            }
          }
          catch {
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone $("https://github.com", $d.gMO, "rsGit.git" -join '/'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
@@ -341,7 +347,13 @@ Function Get-TempPullDSC {
             chdir $($d.wD)
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning $(("git@github.com:", $d.gCA -join ''), $($($d.mR), ".git" -join '') -join '/')"
             Start -Wait $gitExe -ArgumentList "clone  $(("git@github.com:", $d.gCA -join ''), $($($d.mR), ".git" -join '') -join '/')"
-            $isDone = $true
+            if(Test-Path -Path $($d.wD, $($d.mR) -join '\')) {
+               $isDone = $true
+            }
+            else {
+               Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone $(("git@github.com:", $d.gCA -join ''), $($($d.mR), ".git" -join '') -join '/'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
+               $timeOut += 1
+            }
          }
          catch {
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone $(("git@github.com:", $d.gCA -join ''), $($($d.mR), ".git" -join '') -join '/'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
