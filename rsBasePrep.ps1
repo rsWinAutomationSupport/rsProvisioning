@@ -287,10 +287,10 @@ Function Get-TempPullDSC {
       $isDone = $false
       $timeOut = 0
       do {
-      if($timeOut -ge 5) { 
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
-         break 
-      }
+         if($timeOut -ge 5) { 
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
+            break 
+         }
          try {
             chdir "C:\Program Files\WindowsPowerShell\Modules\"
             Start -Wait $gitExe -ArgumentList "clone  $("https://github.com", $d.gMO, "rsGit.git" -join '/')"
@@ -308,10 +308,10 @@ Function Get-TempPullDSC {
       $isDone = $false
       $timeOut = 0
       do {
-      if($timeOut -ge 5) { 
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
-         break 
-      }
+         if($timeOut -ge 5) { 
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
+            break 
+         }
          try {
             chdir $($d.wD)
             Start -Wait $gitExe -ArgumentList "clone  $(("git@github.com:", $d.gCA -join ''), $($($d.mR), ".git" -join '') -join '/')"
@@ -335,10 +335,10 @@ Function Get-TempPullDSC {
       $isDone = $false
       $timeOut = 0
       do {
-      if($timeOut -ge 5) { 
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
-         break 
-      }
+         if($timeOut -ge 5) { 
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
+            break 
+         }
          try {
             Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.prov, "initDSC.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing inital temporary DSC configuration $($d.wD, $d.prov, "initDSC.ps1" -join '\')"
@@ -356,10 +356,10 @@ Function Get-TempPullDSC {
       $isDone = $false
       $timeOut = 0
       do {
-      if($timeOut -ge 5) { 
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
-         break 
-      }
+         if($timeOut -ge 5) { 
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
+            break 
+         }
          try {
             chdir $($d.wD)
             Start -Wait $gitExe -ArgumentList "clone  $((("https://", $d.gAPI, "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/') "
@@ -407,10 +407,10 @@ Function Install-DSC {
       $isDone = $false
       $timeOut = 0
       do {
-      if($timeOut -ge 5) { 
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
-         break 
-      }
+         if($timeOut -ge 5) { 
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
+            break 
+         }
          try {
             Install-WindowsFeature Web-Server
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing WindowsFeature Web-Server"
@@ -439,10 +439,10 @@ Function Install-DSC {
       $isDone = $false
       $timeOut = 0
       do {
-      if($timeOut -ge 5) { 
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
-         break 
-      }
+         if($timeOut -ge 5) { 
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
+            break 
+         }
          try {
             Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing DSC $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')"
@@ -757,12 +757,8 @@ Function Clean-Up {
 ##################################################################################################################################
 #                                             Setting Script Wide Variables
 ##################################################################################################################################
-try {
-   . "C:\cloud-automation\secrets.ps1"
-}
-catch {
-   Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to load secrets file `n $($_.Exception.Message)"
-}   
+
+   . "C:\cloud-automation\secrets.ps1"  
    
    $gitExe = "C:\Program Files (x86)\Git\bin\git.exe"
 
