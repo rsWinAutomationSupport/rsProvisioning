@@ -90,53 +90,27 @@ Function Create-ClientData {
 }
 
 Function Check-RC {
-   $base = gwmi -n root\wmi -cl CitrixXenStoreBase 
-   $sid = $base.AddSession("MyNewSession") 
-   $session = gwmi -n root\wmi -q "select * from CitrixXenStoreSession where SessionId=$($sid.SessionId)" 
-   $isDone = $false
-   $timeOut = 0
-   do {
-      if($timeOut -ge 5) { 
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
-         break 
+   $currentRegion = Get-Region
+   if($Global:isRackConnect -and ($currentRegion -eq $Global:defaultRegion)) {
+      $uri = "https://"  + $dc + ".api.rackconnect.rackspace.com/v1/automation_status?format=text"
+      try{
+         Invoke-RestMethod -Uri $uri -Method GET -ContentType application/json
+         $isRC = $true
       }
-      try {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Retrieving region from xenstore"
-         $dc = $session.GetValue("vm-data/provider_data/region").value
-         if($dc) {
-            $isDone = $true
-         }
-         else {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to retrieve region from xenstore, sleeping for 30 seconds then trying again. "
-            $timeOut += 1
+      catch { $isRC = $false }
+      if($Global:isRackConnect) {
+         do {
+            Write-Host "Running"
+            try {
+               $rcStatus = Invoke-RestMethod -Uri $uri -Method GET -ContentType application/json
+            }
+            catch { $rsStatus = "FAILED" }
             Start-Sleep -Seconds 30
          }
-      }
-      catch {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to retrieve region from xenstore, sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
-         $timeOut += 1
-         Start-Sleep -Seconds 30
-      }
+         while ($rcStatus -ne "DEPLOYED")
+      } 
    }
-   while ($isDone -eq $false)
-   $uri = "https://"  + $dc + ".api.rackconnect.rackspace.com/v1/automation_status?format=text"
-   try{
-      Invoke-RestMethod -Uri $uri -Method GET -ContentType application/json
-      $isRC = $true
-   }
-   catch { $isRC = $false }
-   if($isRC) {
-      do {
-         Write-Host "Running"
-         try {
-            $rcStatus = Invoke-RestMethod -Uri $uri -Method GET -ContentType application/json
-         }
-         catch { $rsStatus = "FAILED" }
-         Start-Sleep -Seconds 30
-      }
-      while ($rcStatus -ne "DEPLOYED")
-   }
-} 
+}
 
 Function Get-AccessIPv4 {
    $uri = (($catalog.access.serviceCatalog | ? name -eq "cloudServersOpenStack").endpoints | ? region -eq $defaultRegion).publicURL
@@ -163,20 +137,23 @@ Function Get-AccessIPv4 {
 }
 
 Function Check-Managed {
-   Start-Sleep -Seconds 60
-   $base = gwmi -n root\wmi -cl CitrixXenStoreBase 
-   $sid = $base.AddSession("MyNewSession") 
-   $session = gwmi -n root\wmi -q "select * from CitrixXenStoreSession where SessionId=$($sid.SessionId)" 
-   if( $session.GetValue("vm-data/user-metadata/rax_service_level_automation").value.count -gt 0 ) { $exists = $true }
-   else { $exists = $false } 
-   if ( $exists )
-   {
-      do {
-         Start-Sleep -Seconds 30
+$currentRegion = Get-Region
+   if($Global:isManaged -or (($Global:defaultRegion -ne $currentRegion) -and $Global:isRackConnect)) {
+      Start-Sleep -Seconds 60
+      $base = gwmi -n root\wmi -cl CitrixXenStoreBase 
+      $sid = $base.AddSession("MyNewSession") 
+      $session = gwmi -n root\wmi -q "select * from CitrixXenStoreSession where SessionId=$($sid.SessionId)" 
+      if( $session.GetValue("vm-data/user-metadata/rax_service_level_automation").value.count -gt 0 ) { $exists = $true }
+      else { $exists = $false } 
+      if ( $exists )
+      {
+         do {
+            Start-Sleep -Seconds 30
+         }
+         while ( (Test-Path "C:\Windows\Temp\rs_managed_cloud_automation_complete.txt" ) -eq $false)
       }
-      while ( (Test-Path "C:\Windows\Temp\rs_managed_cloud_automation_complete.txt" ) -eq $false)
-   }
-} 
+   } 
+}
 
 ##################################################################################################################################
 #                                             Function - Disable Client For Microsoft Networks
@@ -299,6 +276,9 @@ Function Create-PullServerInfo {
       Add-Content -Path $path -Value "`"pullServerPrivateIp`" = `"$pullServerPrivateIp`""
       Add-Content -Path $path -Value "`"pullServerPublicIp`" = `"$pullServerPublicIp`""
       Add-Content -Path $path -Value "`"region`" = `"$region`""
+      Add-Content -Path $path -Value "`"isRackConnect`" = `"$isRackConnect`""
+      Add-Content -Path $path -Value "`"isManaged`" = `"$isManaged`""
+      Add-Content -Path $path -Value "`"defaultRegion`" = `"$defaultRegion`""
       Add-Content -Path $path -Value "}"
       Start-Service Browser
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD + "\" + $d.mR + "\" + "PullServerInfo.ps1")"
@@ -852,6 +832,8 @@ if($role -eq "Pull") {
    $Global:catalog = Get-ServiceCatalog
    $Global:AuthToken = @{"X-Auth-Token"=($catalog.access.token.id)}
    $Global:defaultRegion = $catalog.access.user.'RAX-AUTH:defaultRegion'
+   if(($catalog.access.user | ? name -eq "rack_connect").count -gt 0) { $Global:isRackConnect = $true } else { $Global:isRackConnect = $false } 
+   if(($catalog.access.user | ? name -eq "rax_managed").count -gt 0) { $Global:isManaged = $true } else { $Global:isManaged = $false } 
    $pullServerName = $env:COMPUTERNAME
    $pullServerPublicIP = Get-AccessIPv4
    $pullServerPrivateIP = (Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -match '^10\.').IPAddress
@@ -862,6 +844,9 @@ else
    $pullServerName = $pullServerInfo.pullServerName
    $pullServerPublicIP = $pullserverInfo.pullserverPublicIp
    $pullServerPrivateIP = $pullServerInfo.pullServerPrivateIp
+   $Global:isRackConnect = $pullServerInfo.isRackConnect
+   $Global:isManaged = $pullServerInfo.isManaged
+   $Global:defaultRegion = $pullServerInfo.defaultRegion
 }
     $serverRegion = Get-Region
     $pullServerRegion = $pullServerInfo.region
