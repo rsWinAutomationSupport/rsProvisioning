@@ -91,24 +91,20 @@ Function Create-ClientData {
 
 Function Check-RC {
    $currentRegion = Get-Region
+   Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Checking Rackconnect: Current region $currentRegion isRackconnect $Global:isRackConnect isManaged $Global:isManaged defaultRegion $Global:defaultRegion"
    if($Global:isRackConnect -and ($currentRegion -eq $Global:defaultRegion)) {
+      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "The server is Rackconnect and is in the default region"
       $uri = "https://"  + $dc + ".api.rackconnect.rackspace.com/v1/automation_status?format=text"
-      try{
-         Invoke-RestMethod -Uri $uri -Method GET -ContentType application/json
-         $isRC = $true
-      }
-      catch { $isRC = $false }
-      if($Global:isRackConnect) {
-         do {
-            Write-Host "Running"
-            try {
-               $rcStatus = Invoke-RestMethod -Uri $uri -Method GET -ContentType application/json
-            }
-            catch { $rsStatus = "FAILED" }
-            Start-Sleep -Seconds 30
+      do {
+         Write-Host "Running"
+         try {
+            $rcStatus = Invoke-RestMethod -Uri $uri -Method GET -ContentType application/json
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "RackConnect status is: $rsStatus"
          }
-         while ($rcStatus -ne "DEPLOYED")
-      } 
+         catch { $rsStatus = "FAILED" }
+         Start-Sleep -Seconds 30
+      }
+      while ($rcStatus -ne "DEPLOYED")
    }
 }
 
@@ -137,7 +133,7 @@ Function Get-AccessIPv4 {
 }
 
 Function Check-Managed {
-$currentRegion = Get-Region
+   $currentRegion = Get-Region
    if($Global:isManaged -or (($Global:defaultRegion -ne $currentRegion) -and $Global:isRackConnect)) {
       Start-Sleep -Seconds 60
       $base = gwmi -n root\wmi -cl CitrixXenStoreBase 
