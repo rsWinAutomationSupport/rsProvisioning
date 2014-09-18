@@ -161,6 +161,23 @@ Function Get-AccessIPv4 {
    while ($isDone -eq $false)
    return $accessIPv4
 }
+
+Function Check-Managed {
+   Start-Sleep -Seconds 60
+   $base = gwmi -n root\wmi -cl CitrixXenStoreBase 
+   $sid = $base.AddSession("MyNewSession") 
+   $session = gwmi -n root\wmi -q "select * from CitrixXenStoreSession where SessionId=$($sid.SessionId)" 
+   if( $session.GetValue("vm-data/user-metadata/rax_service_level_automation").value.count -gt 0 ) { $exists = $true }
+   else { $exists = $false } 
+   if ( $exists )
+   {
+      do {
+         Start-Sleep -Seconds 30
+      }
+      while ( (Test-Path "C:\Windows\Temp\rs_managed_cloud_automation_complete.txt" ) -eq $false)
+   }
+} 
+
 ##################################################################################################################################
 #                                             Function - Disable Client For Microsoft Networks
 ##################################################################################################################################
@@ -326,6 +343,7 @@ Function Get-TempPullDSC {
             else {
                Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone $("https://github.com", $d.gMO, "rsGit.git" -join '/'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
                $timeOut += 1
+               Start-Sleep -Seconds 30
             }
          }
          catch {
@@ -858,12 +876,12 @@ switch ($stage) {
       Create-Log
       Write-Log -value "Starting Stage 1"
       Check-RC
+      Check-Managed
       Create-ClientData
       Set-GitPath
       Disable-MSN
       Create-SshKey
       Disable-TOE
-      #Start-Sleep 10
       tzutil /s "Central Standard Time"
       Create-ScheduledTask
       Install-Net45
