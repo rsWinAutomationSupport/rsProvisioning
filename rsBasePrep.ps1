@@ -455,6 +455,28 @@ Function Install-DSC {
       }
    }
    while ($isDone -eq $false)
+   
+   ### Watch Client powershell task during DSC install and wait for completion
+   $timeOut = 0
+   do
+   {
+      if($timeOut -ge 60) { 
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Installing DSC exceeded 10 minutes during install breaking out of loop"
+         break 
+      }
+      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Checking status of DSC installation"
+      $owners = @{}
+      try{
+         gwmi win32_process | % {$owners[$_.handle] = $_.getowner().user}
+      }
+      catch{}
+      $process = get-process powershell -ErrorAction SilentlyContinue | select processname,Id,@{l="Owner";e={$owners[$_.id.tostring()]}}
+      $systemProcess = $process | ? Owner -eq "SYSTEM" -ErrorAction SilentlyContinue
+      $timeOut += 1
+      Start-sleep -Seconds 10
+   }
+   while ( $systemProcess.processName.count -gt 1 )
+   
    ### Pullserver specific tasks, install WindowsFeature Web-Service, install SSL certificates then run rsEnvironments.ps1 to install DSC
    if($role -eq "Pull") {
       Set-Content -Path $($d.wD, "rsEnvironments.hash" -join '\') -Value (Get-FileHash -Path $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')).hash
