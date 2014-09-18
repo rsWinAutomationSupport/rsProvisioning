@@ -103,7 +103,7 @@ Function Check-RC {
       try {
          Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Retrieving region from xenstore"
          $dc = $session.GetValue("vm-data/provider_data/region").value
-         if($dc) {
+         if($dc.count -gt 0) {
             $isDone = $true
          }
          else {
