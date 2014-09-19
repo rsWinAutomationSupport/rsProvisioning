@@ -14,7 +14,6 @@ Function Write-Log {
    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message ($timeStamp + ":`t" + $value)
    return
 }
-
 Function Get-ServiceCatalog {
    return (Invoke-RestMethod -Uri $("https://identity.api.rackspacecloud.com/v2.0/tokens") -Method POST -Body $(@{"auth" = @{"RAX-KSKEY:apiKeyCredentials" = @{"username" = $($d.cU); "apiKey" = $($d.cAPI)}}} | convertTo-Json) -ContentType application/json)
 }
@@ -251,7 +250,6 @@ Function Get-Region {
 ##################################################################################################################################
 Function Create-SshKey {
    set-service Browser -StartupType Manual
-   Start-Service Browser
    $sshPaths = @("C:\Program Files (x86)\Git\.ssh", "C:\Windows\SysWOW64\config\systemprofile\.ssh", "C:\Windows\System32\config\systemprofile\.ssh")
    foreach($sshPath in $sshPaths) {
       if(!(Test-Path -Path $sshPath)) {
@@ -268,6 +266,7 @@ Function Create-SshKey {
       Add-Content $($sshPath, "known_hosts" -join '\') -Value "192.30.252.131 ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ=="
       Add-Content $($sshPath, "known_hosts" -join '\') -Value "192.30.252.130 ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ=="
    }
+   Start-Service Browser
    Remove-Item "C:\Program Files (x86)\Git\.ssh\id_rsa*"
    if($role -eq "Pull") {
       # Creates Pull Server ssh key and pushes to GitHub account C:\Program Files (x86)\Git\.ssh
@@ -887,6 +886,7 @@ switch ($stage) {
    {
       Create-Log
       Write-Log -value "Starting Stage 1"
+      Create-SshKey
       Get-TempPullDSC
       Load-Globals
       Check-RC
@@ -894,7 +894,6 @@ switch ($stage) {
       Create-ClientData
       Set-GitPath
       Disable-MSN
-      Create-SshKey
       Disable-TOE
       tzutil /s "Central Standard Time"
       Create-ScheduledTask
