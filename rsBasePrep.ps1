@@ -94,7 +94,7 @@ Function Check-RC {
    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Checking Rackconnect: Current region $currentRegion isRackconnect $Global:isRackConnect isManaged $Global:isManaged defaultRegion $Global:defaultRegion"
    if($Global:isRackConnect -and ($currentRegion -eq $Global:defaultRegion)) {
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "The server is Rackconnect and is in the default region"
-      $uri = "https://"  + $dc + ".api.rackconnect.rackspace.com/v1/automation_status?format=text"
+      $uri = $(("https://", $currentRegion -join ''), ".api.rackconnect.rackspace.com/v1/automation_status?format=text" -join '')
       do {
          Write-Host "Running"
          try {
