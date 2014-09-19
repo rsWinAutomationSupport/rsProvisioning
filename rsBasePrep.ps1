@@ -828,8 +828,8 @@ if($role -eq "Pull") {
    $Global:catalog = Get-ServiceCatalog
    $Global:AuthToken = @{"X-Auth-Token"=($catalog.access.token.id)}
    $Global:defaultRegion = $catalog.access.user.'RAX-AUTH:defaultRegion'
-   if(($catalog.access.user | ? name -eq "rack_connect").count -gt 0) { $Global:isRackConnect = $true } else { $Global:isRackConnect = $false } 
-   if(($catalog.access.user | ? name -eq "rax_managed").count -gt 0) { $Global:isManaged = $true } else { $Global:isManaged = $false } 
+   if(($catalog.access.user.roles | ? name -eq "rack_connect").id.count -gt 0) { $Global:isRackConnect = $true } else { $Global:isRackConnect = $false } 
+   if(($catalog.access.user.roles | ? name -eq "rax_managed").id.count -gt 0) { $Global:isManaged = $true } else { $Global:isManaged = $false } 
    $pullServerName = $env:COMPUTERNAME
    $pullServerPublicIP = Get-AccessIPv4
    $pullServerPrivateIP = (Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -match '^10\.').IPAddress

@@ -71,6 +71,9 @@ Function Check-Hash {
    Add-Content -Path $path -Value "`"pullServerPrivateIp`" = `"$pullServerPrivateIp`""
    Add-Content -Path $path -Value "`"pullServerPublicIp`" = `"$pullServerPublicIp`""
    Add-Content -Path $path -Value "`"region`" = `"$region`""
+   Add-Content -Path $path -Value "`"isRackConnect`" = `"$isRackConnect`""
+   Add-Content -Path $path -Value "`"isManaged`" = `"$isManaged`""
+   Add-Content -Path $path -Value "`"defaultRegion`" = `"$defaultRegion`""
    Add-Content -Path $path -Value "}"
    Set-Service Browser -startuptype "manual"
    Start-Service Browser
@@ -117,9 +120,11 @@ Function Install-Certs {
 }
 $role = Get-Role
 if($role -eq "Pull") {
-$Global:catalog = Get-ServiceCatalog
-$Global:AuthToken = @{"X-Auth-Token"=($catalog.access.token.id)}
-$Global:defaultRegion = $catalog.access.user.'RAX-AUTH:defaultRegion'
+   $Global:catalog = Get-ServiceCatalog
+   $Global:AuthToken = @{"X-Auth-Token"=($catalog.access.token.id)}
+   $Global:defaultRegion = $catalog.access.user.'RAX-AUTH:defaultRegion'
+   if(($catalog.access.user.roles | ? name -eq "rack_connect").id.count -gt 0) { $Global:isRackConnect = $true } else { $Global:isRackConnect = $false } 
+   if(($catalog.access.user.roles | ? name -eq "rax_managed").id.count -gt 0) { $Global:isManaged = $true } else { $Global:isManaged = $false } 
    Check-Hash
 }
 else {
