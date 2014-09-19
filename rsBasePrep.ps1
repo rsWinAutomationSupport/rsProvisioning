@@ -19,6 +19,52 @@ Function Get-ServiceCatalog {
 }
 
 ##################################################################################################################################
+#                                             Function - Retrieve server role from XenStore WMI metadata
+##################################################################################################################################
+Function Get-Role {
+   $base = gwmi -n root\wmi -cl CitrixXenStoreBase
+   $sid = $base.AddSession("MyNewSession")
+   $session = gwmi -n root\wmi -q "select * from CitrixXenStoreSession where SessionId=$($sid.SessionId)"
+   $role = $session.GetValue("vm-data/user-metadata/Role").value -replace "`"", ""
+   return $role
+}
+
+
+##################################################################################################################################
+#                                             Function - Retrieve server region from XenStore WMI
+##################################################################################################################################
+Function Get-Region {
+   $base = gwmi -n root\wmi -cl CitrixXenStoreBase
+   $sid = $base.AddSession("MyNewSession")
+   $session = gwmi -n root\wmi -q "select * from CitrixXenStoreSession where SessionId=$($sid.SessionId)"
+   $region = $session.GetValue("vm-data/provider_data/region").value -replace "`"", ""
+   return $region
+}
+
+Function Get-AccessIPv4 {
+   $uri = (($Global:catalog.access.serviceCatalog | ? name -eq "cloudServersOpenStack").endpoints | ? region -eq $Global:defaultRegion).publicURL
+   $isDone = $false
+   $timeOut = 0
+   do {
+      if($timeOut -ge 5) { 
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
+         break 
+      }
+      try {
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Retrieving accessIPv4 address $accessIPv4"
+         $accessIPv4 = (((Invoke-RestMethod -Uri $($uri + "/servers/detail") -Method GET -Headers $AuthToken -ContentType application/json).servers) | ? { $_.name -eq $env:COMPUTERNAME}).accessIPv4
+         $isDone = $true
+      }
+      catch {
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to retrieve accessIPv4 address, sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
+         $timeOut += 1
+         Start-Sleep -Seconds 30
+      }
+   }
+   while ($isDone -eq $false)
+   return $accessIPv4
+}
+##################################################################################################################################
 #                                             Function - Create custom Event Log for DevOps Automation
 ##################################################################################################################################
 Function Create-Log {
@@ -36,12 +82,13 @@ Function Create-Log {
 }
 
 Function Load-Globals {
+   $Global:serverName = $env:COMPUTERNAME
    if($role -eq "Pull") {
       $Global:catalog = Get-ServiceCatalog
-      $Global:AuthToken = @{"X-Auth-Token"=($catalog.access.token.id)}
-      $Global:defaultRegion = $catalog.access.user.'RAX-AUTH:defaultRegion'
-      if(($catalog.access.user.roles | ? name -eq "rack_connect").id.count -gt 0) { $Global:isRackConnect = $true } else { $Global:isRackConnect = $false } 
-      if(($catalog.access.user.roles | ? name -eq "rax_managed").id.count -gt 0) { $Global:isManaged = $true } else { $Global:isManaged = $false } 
+      $Global:AuthToken = @{"X-Auth-Token"=($Global:catalog.access.token.id)}
+      $Global:defaultRegion = $Global:catalog.access.user.'RAX-AUTH:defaultRegion'
+      if(($Global:catalog.access.user.roles | ? name -eq "rack_connect").id.count -gt 0) { $Global:isRackConnect = $true } else { $Global:isRackConnect = $false } 
+      if((Global:catalog.access.user.roles | ? name -eq "rax_managed").id.count -gt 0) { $Global:isManaged = $true } else { $Global:isManaged = $false } 
       $Global:pullServerName = $env:COMPUTERNAME
       $Global:pullServerPublicIP = Get-AccessIPv4
       $Global:pullServerPrivateIP = (Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -match '^10\.').IPAddress
@@ -145,30 +192,6 @@ Function Check-RC {
    }
 }
 
-Function Get-AccessIPv4 {
-   $uri = (($catalog.access.serviceCatalog | ? name -eq "cloudServersOpenStack").endpoints | ? region -eq $defaultRegion).publicURL
-   $isDone = $false
-   $timeOut = 0
-   do {
-      if($timeOut -ge 5) { 
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
-         break 
-      }
-      try {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Retrieving accessIPv4 address $accessIPv4"
-         $accessIPv4 = (((Invoke-RestMethod -Uri $($uri + "/servers/detail") -Method GET -Headers $AuthToken -ContentType application/json).servers) | ? { $_.name -eq $env:COMPUTERNAME}).accessIPv4
-         $isDone = $true
-      }
-      catch {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to retrieve accessIPv4 address, sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
-         $timeOut += 1
-         Start-Sleep -Seconds 30
-      }
-   }
-   while ($isDone -eq $false)
-   return $accessIPv4
-}
-
 Function Check-Managed {
    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Checking to see if account is managed"
    $currentRegion = Get-Region
@@ -219,32 +242,6 @@ Function Disable-MSN {
    while ($isDone -eq $false)
    return
 }
-
-
-##################################################################################################################################
-#                                             Function - Retrieve server role from XenStore WMI metadata
-##################################################################################################################################
-Function Get-Role {
-   $base = gwmi -n root\wmi -cl CitrixXenStoreBase
-   $sid = $base.AddSession("MyNewSession")
-   $session = gwmi -n root\wmi -q "select * from CitrixXenStoreSession where SessionId=$($sid.SessionId)"
-   $role = $session.GetValue("vm-data/user-metadata/Role").value -replace "`"", ""
-   return $role
-}
-
-
-##################################################################################################################################
-#                                             Function - Retrieve server region from XenStore WMI
-##################################################################################################################################
-Function Get-Region {
-   $base = gwmi -n root\wmi -cl CitrixXenStoreBase
-   $sid = $base.AddSession("MyNewSession")
-   $session = gwmi -n root\wmi -q "select * from CitrixXenStoreSession where SessionId=$($sid.SessionId)"
-   $region = $session.GetValue("vm-data/provider_data/region").value -replace "`"", ""
-   return $region
-}
-
-
 ##################################################################################################################################
 #                                             Function - Add Github SSH keys to known hosts(all nodes). Generate server SSH key and add to Github account(pull server)
 ##################################################################################################################################
@@ -866,7 +863,6 @@ if((Test-Path -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WinDevOps") -eq $fals
 }
     $stage = (Get-ItemProperty -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WinDevOps").BuildScript
     $role = Get-Role
-    $serverName = $env:COMPUTERNAME
     $osVersion = (Get-WmiObject -class Win32_OperatingSystem).Version
     $currentDate = (get-date).tostring("mm_dd_yyyy-hh_mm_s")
     $wmfVersion = $PSVersionTable.PSVersion.Major
@@ -886,6 +882,7 @@ switch ($stage) {
    {
       Create-Log
       Write-Log -value "Starting Stage 1"
+      Disable-MSN
       Create-SshKey
       Get-TempPullDSC
       Load-Globals
@@ -893,7 +890,6 @@ switch ($stage) {
       Check-Managed
       Create-ClientData
       Set-GitPath
-      Disable-MSN
       Disable-TOE
       tzutil /s "Central Standard Time"
       Create-ScheduledTask
