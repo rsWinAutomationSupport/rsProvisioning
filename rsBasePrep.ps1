@@ -36,6 +36,44 @@ Function Create-Log {
    }
 }
 
+Function Load-Globals {
+   if($role -eq "Pull") {
+      $Global:catalog = Get-ServiceCatalog
+      $Global:AuthToken = @{"X-Auth-Token"=($catalog.access.token.id)}
+      $Global:defaultRegion = $catalog.access.user.'RAX-AUTH:defaultRegion'
+      if(($catalog.access.user.roles | ? name -eq "rack_connect").id.count -gt 0) { $Global:isRackConnect = $true } else { $Global:isRackConnect = $false } 
+      if(($catalog.access.user.roles | ? name -eq "rax_managed").id.count -gt 0) { $Global:isManaged = $true } else { $Global:isManaged = $false } 
+      $Global:pullServerName = $env:COMPUTERNAME
+      $Global:pullServerPublicIP = Get-AccessIPv4
+      $Global:pullServerPrivateIP = (Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -match '^10\.').IPAddress
+      $Global:serverRegion = Get-Region
+   }
+   else 
+   {
+      . "$($d.wD, $d.mR, "PullServerInfo.ps1" -join '\')"
+      $Global:pullServerName = $pullServerInfo.pullServerName
+      $Global:pullServerPublicIP = $pullserverInfo.pullserverPublicIp
+      $Global:pullServerPrivateIP = $pullServerInfo.pullServerPrivateIp
+      $Global:isRackConnect = $pullServerInfo.isRackConnect
+      $Global:isManaged = $pullServerInfo.isManaged
+      $Global:defaultRegion = $pullServerInfo.defaultRegion
+      $Global:pullServerRegion = $pullServerInfo.region
+   }
+   $currentValues = @{
+    "stage" = $stage;
+    "role" = $role;
+    "serverName" = $serverName;
+    "osVersion" = $osVersion;
+    "pullServerName" = $pullServerName;
+    "pullServerPublicIP" = $pullServerPublicIP;
+    "pullServerPrivateIP" = $pullServerPrivateIP;
+    "serverRegion" = $serverRegion;
+    "pullServerRegion" = $pullServerRegion;
+    "wmfVersion" = $wmfVersion;
+    "netVersion" = $netVersion;
+    } | ConvertTo-Json
+   Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Current variable values during this iteration, $currentValues"
+}
 
 ##################################################################################################################################
 #                                             Function - Download files
@@ -300,8 +338,30 @@ Function Set-GitPath {
    $newPath = $currentPath + ";C:\Program Files (x86)\Git\bin\"
    Set-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH -Value $newPath
 }
-
-
+   
+Function Install-TempDSC {
+   if($role -eq "Pull") {
+      $isDone = $false
+      $timeOut = 0
+      do {
+         if($timeOut -ge 5) { 
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
+            break 
+         }
+         try {
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing inital temporary DSC configuration $($d.wD, $d.prov, "initDSC.ps1" -join '\')"
+            Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.prov, "initDSC.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+            $isDone = $true
+         }
+         catch {
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to install intial temporary DSC configuration $($d.wD, $d.prov, "initDSC.ps1" -join '\'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
+            $timeOut += 1
+            Start-Sleep -Seconds 30
+         }
+      }
+      while ($isDone -eq $false)
+   }
+}
 ##################################################################################################################################
 #                                             Function - Download rsGit Move & Run rsPlatform (pull server)
 ##################################################################################################################################
@@ -367,27 +427,6 @@ Function Get-TempPullDSC {
          New-Item -Path "C:\Program Files\WindowsPowerShell\DscService\Modules" -ItemType Container
       }
       Copy-Item $($d.wD, $d.mR, "rsPlatform" -join '\') "C:\Program Files\WindowsPowerShell\Modules" -Recurse
-      
-      
-      $isDone = $false
-      $timeOut = 0
-      do {
-         if($timeOut -ge 5) { 
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
-            break 
-         }
-         try {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing inital temporary DSC configuration $($d.wD, $d.prov, "initDSC.ps1" -join '\')"
-            Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.prov, "initDSC.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
-            $isDone = $true
-         }
-         catch {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to install intial temporary DSC configuration $($d.wD, $d.prov, "initDSC.ps1" -join '\'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
-            $timeOut += 1
-            Start-Sleep -Seconds 30
-         }
-      }
-      while ($isDone -eq $false)
    }
    else {
       $isDone = $false
@@ -830,45 +869,9 @@ if((Test-Path -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WinDevOps") -eq $fals
     $role = Get-Role
     $serverName = $env:COMPUTERNAME
     $osVersion = (Get-WmiObject -class Win32_OperatingSystem).Version
-if($role -eq "Pull") {
-   $Global:catalog = Get-ServiceCatalog
-   $Global:AuthToken = @{"X-Auth-Token"=($catalog.access.token.id)}
-   $Global:defaultRegion = $catalog.access.user.'RAX-AUTH:defaultRegion'
-   if(($catalog.access.user.roles | ? name -eq "rack_connect").id.count -gt 0) { $Global:isRackConnect = $true } else { $Global:isRackConnect = $false } 
-   if(($catalog.access.user.roles | ? name -eq "rax_managed").id.count -gt 0) { $Global:isManaged = $true } else { $Global:isManaged = $false } 
-   $pullServerName = $env:COMPUTERNAME
-   $pullServerPublicIP = Get-AccessIPv4
-   $pullServerPrivateIP = (Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -match '^10\.').IPAddress
-}
-else 
-{
-   . "$($d.wD, $d.mR, "PullServerInfo.ps1" -join '\')"
-   $pullServerName = $pullServerInfo.pullServerName
-   $pullServerPublicIP = $pullserverInfo.pullserverPublicIp
-   $pullServerPrivateIP = $pullServerInfo.pullServerPrivateIp
-   $Global:isRackConnect = $pullServerInfo.isRackConnect
-   $Global:isManaged = $pullServerInfo.isManaged
-   $Global:defaultRegion = $pullServerInfo.defaultRegion
-}
-    $serverRegion = Get-Region
-    $pullServerRegion = $pullServerInfo.region
     $currentDate = (get-date).tostring("mm_dd_yyyy-hh_mm_s")
     $wmfVersion = $PSVersionTable.PSVersion.Major
     $netVersion = (Get-ItemProperty -Path "hklm:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full").Version
-    $currentValues = @{
-    "stage" = $stage;
-    "role" = $role;
-    "serverName" = $serverName;
-    "osVersion" = $osVersion;
-    "pullServerName" = $pullServerName;
-    "pullServerPublicIP" = $pullServerPublicIP;
-    "pullServerPrivateIP" = $pullServerPrivateIP;
-    "serverRegion" = $serverRegion;
-    "pullServerRegion" = $pullServerRegion;
-    "wmfVersion" = $wmfVersion;
-    "netVersion" = $netVersion;
-    } | ConvertTo-Json
-    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Current variable values during this iteration, $currentValues"
 ##################################################################################################################################
 
 
@@ -884,6 +887,8 @@ switch ($stage) {
    {
       Create-Log
       Write-Log -value "Starting Stage 1"
+      Get-TempPullDSC
+      Load-Globals
       Check-RC
       Check-Managed
       Create-ClientData
@@ -901,17 +906,19 @@ switch ($stage) {
    
    2
    {
+      Load-Globals
       Set-Stage -value 3
       Update-XenTools
    }
    3
    {
+      Load-Globals
       Disable-MSN
       Disable-TOE
       Set-DataDrive
       New-NetFirewallRule -DisplayName "WINRM" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 5985-5986
       set-item WSMan:\localhost\Client\TrustedHosts * -force
-      Get-TempPullDSC
+      Install-TempDSC
       Create-PullServerInfo
       Update-HostFile
       Install-Certs
@@ -921,6 +928,7 @@ switch ($stage) {
    }
    4
    {
+      Load-Globals
       Clean-Up
       Break
    }
