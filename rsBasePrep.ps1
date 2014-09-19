@@ -42,7 +42,7 @@ Function Get-Region {
 }
 
 Function Get-AccessIPv4 {
-   $uri = (($Global:catalog.access.serviceCatalog | ? name -eq "cloudServersOpenStack").endpoints | ? region -eq $Global:defaultRegion).publicURL
+   $uri = (($Global:catalog.access.serviceCatalog | ? name -eq "cloudServersOpenStack").endpoints | ? region -eq $Global:serverRegion).publicURL
    $isDone = $false
    $timeOut = 0
    do {
