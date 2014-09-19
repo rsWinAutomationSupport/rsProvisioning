@@ -83,16 +83,17 @@ Function Create-Log {
 
 Function Load-Globals {
    $Global:serverName = $env:COMPUTERNAME
+   $Global:serverRegion = Get-Region
    if($role -eq "Pull") {
       $Global:catalog = Get-ServiceCatalog
       $Global:AuthToken = @{"X-Auth-Token"=($Global:catalog.access.token.id)}
       $Global:defaultRegion = $Global:catalog.access.user.'RAX-AUTH:defaultRegion'
       if(($Global:catalog.access.user.roles | ? name -eq "rack_connect").id.count -gt 0) { $Global:isRackConnect = $true } else { $Global:isRackConnect = $false } 
-      if((Global:catalog.access.user.roles | ? name -eq "rax_managed").id.count -gt 0) { $Global:isManaged = $true } else { $Global:isManaged = $false } 
+      if(($Global:catalog.access.user.roles | ? name -eq "rax_managed").id.count -gt 0) { $Global:isManaged = $true } else { $Global:isManaged = $false } 
       $Global:pullServerName = $env:COMPUTERNAME
       $Global:pullServerPublicIP = Get-AccessIPv4
       $Global:pullServerPrivateIP = (Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -match '^10\.').IPAddress
-      $Global:serverRegion = Get-Region
+      $Global:pullServerRegion = Get-Region
    }
    else 
    {
