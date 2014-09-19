@@ -133,17 +133,23 @@ Function Get-AccessIPv4 {
 }
 
 Function Check-Managed {
+   Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Checking to see if account is managed"
    $currentRegion = Get-Region
    if($Global:isManaged -or (($Global:defaultRegion -ne $currentRegion) -and $Global:isRackConnect)) {
+      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Account is either managed or server is not in the default region isManaged $Global:isManaged defaultRegion $Global:defaultRegion Current region $currentRegion isRackConnect $Global:isRackConnect starting to sleep"
       Start-Sleep -Seconds 60
       $base = gwmi -n root\wmi -cl CitrixXenStoreBase 
       $sid = $base.AddSession("MyNewSession") 
       $session = gwmi -n root\wmi -q "select * from CitrixXenStoreSession where SessionId=$($sid.SessionId)" 
       if( $session.GetValue("vm-data/user-metadata/rax_service_level_automation").value.count -gt 0 ) { $exists = $true }
-      else { $exists = $false } 
+      else { 
+         $exists = $false 
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "rax_service_level_automation is not completed"
+      } 
       if ( $exists )
       {
          do {
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for rax_service_level_automation"
             Start-Sleep -Seconds 30
          }
          while ( (Test-Path "C:\Windows\Temp\rs_managed_cloud_automation_complete.txt" ) -eq $false)
