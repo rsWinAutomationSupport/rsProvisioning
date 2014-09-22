@@ -38,22 +38,31 @@ Function Check-Hash {
    if((Test-Path $($d.wD, "rsEnvironments.hash" -join '\')) -eq $false) {
       Set-Content -Path $($d.wD, "rsEnvironments.hash" -join '\') -Value (Get-FileHash -Path $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')).hash
       chdir $($d.wD, $d.mR -join '\')
+      Start-Service Browser
       Start -Wait git pull
-      & $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\') -ExecutionPolicy -Bypass -Force
+      Stop-Service Browser
+      Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+      #& $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\') -ExecutionPolicy -Bypass -Force
    }
    $checkHash = Get-FileHash $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')
    $currentHash = Get-Content $($d.wD, "rsEnvironments.hash" -join '\')
    if($checkHash.Hash -ne $currentHash) {
       Set-Content -Path $($d.wD, "rsEnvironments.hash" -join '\') -Value (Get-FileHash -Path $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')).hash
       chdir $($d.wD, $d.mR -join '\')
+      Start-Service Browser
       Start -Wait git pull
-      & $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\') -ExecutionPolicy -Bypass -Force
+      Stop-Service Browser
+      Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+      #& $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\') -ExecutionPolicy -Bypass -Force
    }
    
    else {
       chdir $($d.wD, $d.mR -join '\')
+      Start-Service Browser
       Start -Wait git pull
-      & $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\') -ExecutionPolicy -Bypass -Force
+      Stop-Service Browser
+      Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+      #& $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\') -ExecutionPolicy -Bypass -Force
    }
    
    $pullServerName = $env:COMPUTERNAME
