@@ -509,8 +509,6 @@ Function Install-DSC {
       }
       while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
    }
-   
-   
    ### Pullserver specific tasks, install WindowsFeature Web-Service, install SSL certificates then run rsEnvironments.ps1 to install DSC
    if($role -eq "Pull") {
       Set-Content -Path $($d.wD, "rsEnvironments.hash" -join '\') -Value (Get-FileHash -Path $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')).hash
