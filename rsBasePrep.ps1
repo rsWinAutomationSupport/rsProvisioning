@@ -473,27 +473,7 @@ Function Install-DSC {
       }
    }
    while ($isDone -eq $false)
-   
-   ### Watch Client powershell task during DSC install and wait for completion
-   <#$timeOut = 0
-   do
-   {
-      if($timeOut -ge 60) { 
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Installing DSC exceeded 10 minutes during install breaking out of loop"
-         break 
-      }
-      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Checking status of DSC installation"
-      $owners = @{}
-      try{
-         gwmi win32_process | % {$owners[$_.handle] = $_.getowner().user}
-      }
-      catch{}
-      $process = get-process powershell -ErrorAction SilentlyContinue | select processname,Id,@{l="Owner";e={$owners[$_.id.tostring()]}}
-      $systemProcess = $process | ? Owner -eq "SYSTEM" -ErrorAction SilentlyContinue
-      $timeOut += 1
-      Start-sleep -Seconds 10
-   }
-   while ( $systemProcess.processName.count -gt 1 )#>
+   ### Watch Client DSC install proccess and wait for completion
    if($role -ne "Pull") {
       do {
          if(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof") -or !(Test-Path -Path "C:\Windows\System32\Configuration\Pending.mof")) {
@@ -564,26 +544,20 @@ Function Install-DSC {
          }
       }
       while ($isDone -eq $false)
-      ### Watch powershell task during DSC install and wait for completion
-      $timeOut = 0
-      do
-      {
-         if($timeOut -ge 60) { 
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Installing DSC exceeded 10 minutes during install breaking out of loop"
-            break 
+      ### Watch Pullserver DSC install proccess and wait for completion
+      do {
+         if(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof") -or !(Test-Path -Path "C:\Windows\System32\Configuration\Pending.mof")) {
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1002 -Message "Current.mof has not yet been created and Pending.mof does not exist."
+            if((Get-ScheduledTask -TaskName "Consistency").State -eq "Ready") {
+               Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1002 -Message "Consistency task is not running and no Current.mof file exists, restarting rsEnvironments.ps1."
+               taskkill /F /IM WmiPrvSE.exe
+               Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+            }
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1002 -Message "Starting to sleep and will recheck status of DSC."
+            Start-Sleep -Seconds 30
          }
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Checking status of DSC installation"
-         $owners = @{}
-         try{
-            gwmi win32_process | % {$owners[$_.handle] = $_.getowner().user}
-         }
-         catch{}
-         $process = get-process powershell -ErrorAction SilentlyContinue | select processname,Id,@{l="Owner";e={$owners[$_.id.tostring()]}}
-         $systemProcess = $process | ? Owner -eq "SYSTEM" -ErrorAction SilentlyContinue
-         $timeOut += 1
-         Start-sleep -Seconds 10
       }
-      while ( $systemProcess.processName.count -gt 1 )
+      while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
    }
    return
 }
