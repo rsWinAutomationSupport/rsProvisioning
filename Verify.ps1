@@ -44,7 +44,6 @@ Function Check-Hash {
       Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
       ### Watch Pullserver DSC install proccess and wait for completion
       do {
-         if(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof") -or !(Test-Path -Path "C:\Windows\System32\Configuration\Pending.mof")) {
             Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Current.mof has not yet been created and Pending.mof does not exist."
             if((Get-ScheduledTask -TaskName "Consistency").State -eq "Ready") {
                Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Consistency task is not running and no Current.mof file exists, restarting rsEnvironments.ps1."
@@ -53,7 +52,6 @@ Function Check-Hash {
             }
             Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Starting to sleep and will recheck status of DSC."
             Start-Sleep -Seconds 30
-         }
       }
       while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
    }
@@ -68,7 +66,6 @@ Function Check-Hash {
       Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
       ### Watch Pullserver DSC install proccess and wait for completion
       do {
-         if(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof") -or !(Test-Path -Path "C:\Windows\System32\Configuration\Pending.mof")) {
             Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Current.mof has not yet been created and Pending.mof does not exist."
             if((Get-ScheduledTask -TaskName "Consistency").State -eq "Ready") {
                Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Consistency task is not running and no Current.mof file exists, restarting rsEnvironments.ps1."
@@ -77,7 +74,6 @@ Function Check-Hash {
             }
             Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Starting to sleep and will recheck status of DSC."
             Start-Sleep -Seconds 30
-         }
       }
       while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
    }
@@ -90,7 +86,6 @@ Function Check-Hash {
       Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
       ### Watch Pullserver DSC install proccess and wait for completion
       do {
-         if(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof") -or !(Test-Path -Path "C:\Windows\System32\Configuration\Pending.mof")) {
             Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Current.mof has not yet been created and Pending.mof does not exist."
             if((Get-ScheduledTask -TaskName "Consistency").State -eq "Ready") {
                Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Consistency task is not running and no Current.mof file exists, restarting rsEnvironments.ps1."
@@ -99,7 +94,6 @@ Function Check-Hash {
             }
             Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Starting to sleep and will recheck status of DSC."
             Start-Sleep -Seconds 30
-         }
       }
       while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
    }
@@ -170,7 +164,6 @@ Function Install-Certs {
    Copy-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa.pub'
    powershell.exe certutil -addstore -f root $($d.wD, $d.mR, "Certificates\PullServer.crt" -join '\')
    do {
-      if(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof") -or !(Test-Path -Path "C:\Windows\System32\Configuration\Pending.mof")) {
          Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Current.mof has not yet been created and Pending.mof does not exist."
          if((Get-ScheduledTask -TaskName "Consistency").State -eq "Ready") {
             Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Consistency task is not running and no Current.mof file exists, restarting Consistency task."
@@ -179,7 +172,6 @@ Function Install-Certs {
          }
          Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Starting to sleep and will recheck status of LCM."
          Start-Sleep -Seconds 30
-      }
    }
    while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
 }
