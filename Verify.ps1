@@ -1,6 +1,17 @@
 ﻿. "C:\cloud-automation\secrets.ps1"
 . "$($d.wD, $d.mR, "PullServerInfo.ps1" -join '\')"
-
+if((Get-ScheduledTask -TaskName "BasePrep").State -eq "Running") {
+   Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "BasePrep task is currently running, aborting Verify task"
+   break
+}
+if((Test-Path -Path "C:\Windows\System32\Configuration\Pending.mof") -and ((Get-ScheduledTask -TaskName "Consistency").State -eq "Running")) {
+   Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Pending MOF exists and Consistency is currently running"
+   if((Test-Path -Path "C:\Windows\System32\Configuration\Current.mof")) {
+      Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Pending MOF exists and Consistency is currently running, Current MOF exists, removing Current MOF and aborting Verify task "
+      Remove-Item -Path "C:\Windows\System32\Configuration\Current.mof" -Force
+   }
+   break
+}
 ## This script is executed by the PullServerDSC scheduled task
 ## This script will check the hash value of the PullServerDSC.ps1 config script and if it has been modified it will create a new Hash and execute the PullServerDSC.ps1 script
 ## to start a new DSC configuration on the PullServer
@@ -41,10 +52,10 @@ Function Check-Hash {
       Start-Service Browser
       Start -Wait git pull
       Stop-Service Browser
+      taskkill /F /IM WmiPrvSE.exe
       Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
       ### Watch Pullserver DSC install proccess and wait for completion
       do {
-         Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Current.mof has not yet been created and Pending.mof does not exist."
          if((Get-ScheduledTask -TaskName "Consistency").State -eq "Ready") {
             Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Consistency task is not running and no Current.mof file exists, restarting rsEnvironments.ps1."
             taskkill /F /IM WmiPrvSE.exe
@@ -63,6 +74,7 @@ Function Check-Hash {
       Start-Service Browser
       Start -Wait git pull
       Stop-Service Browser
+      taskkill /F /IM WmiPrvSE.exe
       Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
       ### Watch Pullserver DSC install proccess and wait for completion
       do {
@@ -83,9 +95,7 @@ Function Check-Hash {
       Start-Service Browser
       Start -Wait git pull
       Stop-Service Browser
-      if(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof") {
-         Remove-Item -Path "C:\Windows\System32\Configuration\Current.mof" -Force
-      }
+      taskkill /F /IM WmiPrvSE.exe
       Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
       ### Watch Pullserver DSC install proccess and wait for completion
       do {
@@ -166,11 +176,7 @@ Function Install-Certs {
    Copy-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa'
    Copy-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa.pub'
    powershell.exe certutil -addstore -f root $($d.wD, $d.mR, "Certificates\PullServer.crt" -join '\')
-   if(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof") {
-      Remove-Item -Path "C:\Windows\System32\Configuration\Current.mof" -Force
-   }
    do {
-      Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Current.mof has not yet been created and Pending.mof does not exist."
       if((Get-ScheduledTask -TaskName "Consistency").State -eq "Ready") {
          Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Consistency task is not running and no Current.mof file exists, restarting Consistency task."
          taskkill /F /IM WmiPrvSE.exe
