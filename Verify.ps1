@@ -22,7 +22,7 @@ Function Get-Role {
    return $role
 }
 Function Get-AccessIPv4 {
-   $uri = (($catalog.access.serviceCatalog | ? name -eq "cloudServersOpenStack").endpoints | ? region -eq $currentRegion).publicURL
+   $uri = (($catalog.access.serviceCatalog | ? name -eq "cloudServersOpenStack").endpoints | ? region -eq $(Get-Region)).publicURL
    $accessIPv4 = (((Invoke-RestMethod -Uri $($uri + "/servers/detail") -Method GET -Headers $AuthToken -ContentType application/json).servers) | ? { $_.name -eq $env:COMPUTERNAME}).accessIPv4
    return $accessIPv4
 }
