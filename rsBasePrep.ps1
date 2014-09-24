@@ -476,16 +476,14 @@ Function Install-DSC {
    ### Watch Client DSC install proccess and wait for completion
    if($role -ne "Pull") {
       do {
-         if(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof")) {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1002 -Message "Current.mof has not yet been created and Pending.mof does not exist."
-            if((Get-ScheduledTask -TaskName "Consistency").State -eq "Ready") {
-               Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1002 -Message "Consistency task is not running and no Current.mof file exists, restarting Consistency task."
-               taskkill /F /IM WmiPrvSE.exe
-               Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
-            }
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1002 -Message "Starting to sleep and will recheck status of LCM."
-            Start-Sleep -Seconds 30
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1002 -Message "Current.mof has not yet been created and Pending.mof does not exist."
+         if((Get-ScheduledTask -TaskName "Consistency").State -eq "Ready") {
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1002 -Message "Consistency task is not running and no Current.mof file exists, restarting Consistency task."
+            taskkill /F /IM WmiPrvSE.exe
+            Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
          }
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1002 -Message "Starting to sleep and will recheck status of LCM."
+         Start-Sleep -Seconds 30
       }
       while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
    }
@@ -546,7 +544,6 @@ Function Install-DSC {
       while ($isDone -eq $false)
       ### Watch Pullserver DSC install proccess and wait for completion
       do {
-         if(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof") -or !(Test-Path -Path "C:\Windows\System32\Configuration\Pending.mof")) {
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1002 -Message "Current.mof has not yet been created and Pending.mof does not exist."
             if((Get-ScheduledTask -TaskName "Consistency").State -eq "Ready") {
                Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1002 -Message "Consistency task is not running and no Current.mof file exists, restarting rsEnvironments.ps1."
@@ -555,7 +552,6 @@ Function Install-DSC {
             }
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1002 -Message "Starting to sleep and will recheck status of DSC."
             Start-Sleep -Seconds 30
-         }
       }
       while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
    }
