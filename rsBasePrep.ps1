@@ -476,7 +476,7 @@ Function Install-DSC {
    ### Watch Client DSC install proccess and wait for completion
    if($role -ne "Pull") {
       do {
-         if(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof") -or !(Test-Path -Path "C:\Windows\System32\Configuration\Pending.mof")) {
+         if(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof")) {
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1002 -Message "Current.mof has not yet been created and Pending.mof does not exist."
             if((Get-ScheduledTask -TaskName "Consistency").State -eq "Ready") {
                Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1002 -Message "Consistency task is not running and no Current.mof file exists, restarting Consistency task."
