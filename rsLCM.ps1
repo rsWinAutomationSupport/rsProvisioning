@@ -58,9 +58,15 @@ Configuration PullServerLCM
     }
     else {
         $Node = $env:COMPUTERNAME
+        $cN = "CN=" + $NodeName
         chdir "C:\Windows\Temp"
         $pullServerName = $pullServerInfo.pullServerName
         $pullServerUri = "https://" + $pullServerName + ":8080/PSDSCPullServer.svc"
+        if (!(Test-Path -Path $($d.wD, $d.mR, "Certificates", "Credentials" -join '\')))
+        {
+            New-Item -Path $($d.wD, $d.mR, "Certificates", "Credentials" -join '\') -ItemType directory
+        }
+        powershell.exe $($d.wD, $d.prov, "makecert.exe" -join '\') -r -pe -n $cN -sky exchange -ss my $($d.wD, $d.mR, "Certificates\Credentials","$ObjectGuid.cer"  -join '\'), -sr localmachine, -len 2048
         ClientLCM -Node $Node -pullServerUri $pullServerUri -ObjectGuid $ObjectGuid -OutputPath "C:\Windows\Temp"
         Set-DscLocalConfigurationManager -Path "C:\Windows\Temp" -Verbose
         Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
