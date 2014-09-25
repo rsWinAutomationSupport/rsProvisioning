@@ -55,6 +55,8 @@ Function Check-Hash {
       taskkill /F /IM WmiPrvSE.exe
       Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
       ### Watch Pullserver DSC install proccess and wait for completion
+      if(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof") -and (Test-Path -Path "C:\Windows\System32\Configuration\Pending.mof")) {
+      
       do {
          if((Get-ScheduledTask -TaskName "Consistency").State -eq "Ready") {
             Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Consistency task is not running and no Current.mof file exists, restarting rsEnvironments.ps1."
@@ -65,6 +67,7 @@ Function Check-Hash {
          Start-Sleep -Seconds 30
       }
       while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
+      }
    }
    $checkHash = Get-FileHash $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')
    $currentHash = Get-Content $($d.wD, "rsEnvironments.hash" -join '\')
@@ -192,8 +195,8 @@ if($role -eq "Pull") {
    $Global:catalog = Get-ServiceCatalog
    $Global:AuthToken = @{"X-Auth-Token"=($catalog.access.token.id)}
    $Global:defaultRegion = $catalog.access.user.'RAX-AUTH:defaultRegion'
-   if(($catalog.access.user.roles | ? name -eq "rack_connect").id.count -gt 0) { $Global:isRackConnect = $true } else { $Global:isRackConnect = $false } 
-   if(($catalog.access.user.roles | ? name -eq "rax_managed").id.count -gt 0) { $Global:isManaged = $true } else { $Global:isManaged = $false } 
+   if(($catalog.access.user.roles | ? name -eq "rack_connect").id.count -gt 0) { $Global:isRackConnect = [bool]$true } else { $Global:isRackConnect = [bool]$false } 
+   if(($catalog.access.user.roles | ? name -eq "rax_managed").id.count -gt 0) { $Global:isManaged = [bool]$true } else { $Global:isManaged = [bool]$false } 
    Check-Hash
 }
 else {
