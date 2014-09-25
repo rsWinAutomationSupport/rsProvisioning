@@ -1,6 +1,11 @@
 ﻿. "C:\cloud-automation\secrets.ps1"
 . "$($d.wD, $d.mR, "PullServerInfo.ps1" -join '\')"
-if((Get-ScheduledTask -TaskName "BasePrep").State -eq "Running") {
+try {
+   $basePrepState = (Get-ScheduledTask -TaskName "BasePrep").State
+}
+catch {
+}
+if($basePrepState -eq "Running") {
    Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "BasePrep task is currently running, aborting Verify task"
    break
 }
@@ -72,10 +77,6 @@ Function Check-Hash {
    $currentHash = Get-Content $($d.wD, "rsEnvironments.hash" -join '\')
    if($checkHash.Hash -ne $currentHash) {
       Set-Content -Path $($d.wD, "rsEnvironments.hash" -join '\') -Value (Get-FileHash -Path $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')).hash
-      chdir $($d.wD, $d.mR -join '\')
-      Start-Service Browser
-      Start -Wait git pull
-      Stop-Service Browser
       taskkill /F /IM WmiPrvSE.exe
       Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
       ### Watch Pullserver DSC install proccess and wait for completion
@@ -94,10 +95,6 @@ Function Check-Hash {
       }
       
       else {
-         chdir $($d.wD, $d.mR -join '\')
-         Start-Service Browser
-         Start -Wait git pull
-         Stop-Service Browser
          taskkill /F /IM WmiPrvSE.exe
          Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
          ### Watch Pullserver DSC install proccess and wait for completion
@@ -144,10 +141,6 @@ Function Check-Hash {
 }
 ### Client tasks
 Function Check-Hosts {
-   chdir $($d.wD, $d.mR -join '\')
-   Start-Service Browser
-   Start -Wait git pull
-   Stop-Service Browser
    $serverRegion = Get-Region
    $pullServerRegion = $pullServerInfo.region
    $pullServerName = $pullServerInfo.pullServerName
@@ -174,9 +167,6 @@ Function Check-Hosts {
 }
 taskkill /F /IM WmiPrvSE.exe
 Function Install-Certs {
-   chdir $($d.wD, $d.mR -join '\')
-   Start-Service Browser
-   Start -Wait git pull
    Stop-Service Browser
    Remove-Item -Path 'C:\Program Files (x86)\Git\.ssh\id_rsa*'
    Get-ChildItem Cert:\LocalMachine\Root\ | where {$_.Subject -eq $cN} | Remove-Item
@@ -195,6 +185,10 @@ Function Install-Certs {
    while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
 }
 $role = Get-Role
+   chdir $($d.wD, $d.mR -join '\')
+   Start-Service Browser
+   Start -Wait git pull
+   Stop-Service Browser
 if($role -eq "Pull") {
    $Global:catalog = Get-ServiceCatalog
    $Global:AuthToken = @{"X-Auth-Token"=($catalog.access.token.id)}
