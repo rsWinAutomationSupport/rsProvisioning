@@ -454,7 +454,7 @@ Function Install-DSC {
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for LCM installation to complete, sleeping 5 seconds"
       Start-Sleep -Seconds 5
    }
-   while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
+   while(!(Test-Path -Path "C:\Windows\System32\Configuration\MetaConfig.mof"))
    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "LCM installation complete"
    ### Pullserver specific tasks, install WindowsFeature Web-Service, install SSL certificates then run rsEnvironments.ps1 to install DSC
    if($role -eq "Pull") {
