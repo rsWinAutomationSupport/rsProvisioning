@@ -174,6 +174,10 @@ Function Check-Hosts {
 }
 taskkill /F /IM WmiPrvSE.exe
 Function Install-Certs {
+   chdir $($d.wD, $d.mR -join '\')
+   Start-Service Browser
+   Start -Wait git pull
+   Stop-Service Browser
    Remove-Item -Path 'C:\Program Files (x86)\Git\.ssh\id_rsa*'
    Get-ChildItem Cert:\LocalMachine\Root\ | where {$_.Subject -eq $cN} | Remove-Item
    Copy-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa'

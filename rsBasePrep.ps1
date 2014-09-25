@@ -544,14 +544,14 @@ Function Install-DSC {
       while ($isDone -eq $false)
       ### Watch Pullserver DSC install proccess and wait for completion
       do {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1002 -Message "Current.mof has not yet been created and Pending.mof does not exist."
-            if((Get-ScheduledTask -TaskName "Consistency").State -eq "Ready") {
-               Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1002 -Message "Consistency task is not running and no Current.mof file exists, restarting rsEnvironments.ps1."
-               taskkill /F /IM WmiPrvSE.exe
-               Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
-            }
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1002 -Message "Starting to sleep and will recheck status of DSC."
-            Start-Sleep -Seconds 30
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1002 -Message "Current.mof has not yet been created and Pending.mof does not exist."
+         if((Get-ScheduledTask -TaskName "Consistency").State -eq "Ready") {
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1002 -Message "Consistency task is not running and no Current.mof file exists, restarting rsEnvironments.ps1."
+            taskkill /F /IM WmiPrvSE.exe
+            Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+         }
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1002 -Message "Starting to sleep and will recheck status of DSC."
+         Start-Sleep -Seconds 30
       }
       while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
    }
@@ -799,6 +799,10 @@ Function Update-HostFile {
 #                                             Function - Install SSL cert used for Client/Pull communications
 ##################################################################################################################################
 Function Install-Certs {
+   chdir $($d.wD, $d.mR -join '/')
+   Start-Service Browser
+   Start -Wait $gitExe pull
+   Stop-Service Browser
    if(!(Test-Path -Path $($d.wD, $d.mR, "Certificates" -join '\'))) {
       New-Item $($d.wD, $d.mR, "Certificates" -join '\') -ItemType Container
    }
