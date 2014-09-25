@@ -88,8 +88,8 @@ Function Load-Globals {
       $Global:catalog = Get-ServiceCatalog
       $Global:AuthToken = @{"X-Auth-Token"=($Global:catalog.access.token.id)}
       $Global:defaultRegion = $Global:catalog.access.user.'RAX-AUTH:defaultRegion'
-      if(($Global:catalog.access.user.roles | ? name -eq "rack_connect").id.count -gt 0) { $Global:isRackConnect = [bool]$true } else { $Global:isRackConnect = [bool]$false } 
-      if(($Global:catalog.access.user.roles | ? name -eq "rax_managed").id.count -gt 0) { $Global:isManaged = [bool]$true } else { $Global:isManaged = [bool]$false } 
+      if(($Global:catalog.access.user.roles | ? name -eq "rack_connect").id.count -gt 0) { $Global:isRackConnect = $true } else { $Global:isRackConnect = $false } 
+      if(($Global:catalog.access.user.roles | ? name -eq "rax_managed").id.count -gt 0) { $Global:isManaged = $true } else { $Global:isManaged = $false } 
       $Global:pullServerName = $env:COMPUTERNAME
       $Global:pullServerPublicIP = Get-AccessIPv4
       $Global:pullServerPrivateIP = (Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -match '^10\.').IPAddress
@@ -313,8 +313,8 @@ Function Create-PullServerInfo {
       Add-Content -Path $path -Value "`"pullServerPrivateIp`" = `"$pullServerPrivateIp`""
       Add-Content -Path $path -Value "`"pullServerPublicIp`" = `"$pullServerPublicIp`""
       Add-Content -Path $path -Value "`"region`" = `"$region`""
-      Add-Content -Path $path -Value "`"isRackConnect`" = `"$isRackConnect`""
-      Add-Content -Path $path -Value "`"isManaged`" = `"$isManaged`""
+      Add-Content -Path $path -Value "`"isRackConnect`" = `"$($isRackConnect.toString().toLower())`""
+      Add-Content -Path $path -Value "`"isManaged`" = `"$($isManaged.toString().toLower())`""
       Add-Content -Path $path -Value "`"defaultRegion`" = `"$defaultRegion`""
       Add-Content -Path $path -Value "}"
       Start-Service Browser

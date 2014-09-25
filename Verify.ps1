@@ -46,17 +46,16 @@ Function Download-File {
 }
 ### will pull before running rsEnvironments.ps1
 Function Check-Hash {
-   if((Test-Path $($d.wD, "rsEnvironments.hash" -join '\')) -eq $false) {
-      Set-Content -Path $($d.wD, "rsEnvironments.hash" -join '\') -Value (Get-FileHash -Path $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')).hash
-      chdir $($d.wD, $d.mR -join '\')
-      Start-Service Browser
-      Start -Wait git pull
-      Stop-Service Browser
-      taskkill /F /IM WmiPrvSE.exe
-      Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
-      ### Watch Pullserver DSC install proccess and wait for completion
-      if(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof") -and (Test-Path -Path "C:\Windows\System32\Configuration\Pending.mof")) {
-      
+if((Test-Path $($d.wD, "rsEnvironments.hash" -join '\')) -eq $false) {
+   Set-Content -Path $($d.wD, "rsEnvironments.hash" -join '\') -Value (Get-FileHash -Path $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')).hash
+   chdir $($d.wD, $d.mR -join '\')
+   Start-Service Browser
+   Start -Wait git pull
+   Stop-Service Browser
+   taskkill /F /IM WmiPrvSE.exe
+   Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+   ### Watch Pullserver DSC install proccess and wait for completion
+   if(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof") -and (Test-Path -Path "C:\Windows\System32\Configuration\Pending.mof")) {
       do {
          if((Get-ScheduledTask -TaskName "Consistency").State -eq "Ready") {
             Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Consistency task is not running and no Current.mof file exists, restarting rsEnvironments.ps1."
@@ -67,21 +66,22 @@ Function Check-Hash {
          Start-Sleep -Seconds 30
       }
       while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
-      }
    }
+}
    $checkHash = Get-FileHash $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')
    $currentHash = Get-Content $($d.wD, "rsEnvironments.hash" -join '\')
-   if($checkHash.Hash -ne $currentHash) {
-      Set-Content -Path $($d.wD, "rsEnvironments.hash" -join '\') -Value (Get-FileHash -Path $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')).hash
-      chdir $($d.wD, $d.mR -join '\')
-      Start-Service Browser
-      Start -Wait git pull
-      Stop-Service Browser
-      taskkill /F /IM WmiPrvSE.exe
-      Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
-      ### Watch Pullserver DSC install proccess and wait for completion
+if($checkHash.Hash -ne $currentHash) {
+   Set-Content -Path $($d.wD, "rsEnvironments.hash" -join '\') -Value (Get-FileHash -Path $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')).hash
+   chdir $($d.wD, $d.mR -join '\')
+   Start-Service Browser
+   Start -Wait git pull
+   Stop-Service Browser
+   taskkill /F /IM WmiPrvSE.exe
+   Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+   ### Watch Pullserver DSC install proccess and wait for completion
+   if(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof") -and (Test-Path -Path "C:\Windows\System32\Configuration\Pending.mof")) {
       do {
-         Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Current.mof has not yet been created and Pending.mof does not exist."
+         Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Current.mof has not yet been created and Pending.mof does exist."
          if((Get-ScheduledTask -TaskName "Consistency").State -eq "Ready") {
             Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Consistency task is not running and no Current.mof file exists, restarting rsEnvironments.ps1."
             taskkill /F /IM WmiPrvSE.exe
@@ -129,8 +129,8 @@ Function Check-Hash {
    Add-Content -Path $path -Value "`"pullServerPrivateIp`" = `"$pullServerPrivateIp`""
    Add-Content -Path $path -Value "`"pullServerPublicIp`" = `"$pullServerPublicIp`""
    Add-Content -Path $path -Value "`"region`" = `"$region`""
-   Add-Content -Path $path -Value "`"isRackConnect`" = `"[bool]$isRackConnect`""
-   Add-Content -Path $path -Value "`"isManaged`" = `"[bool]$isManaged`""
+   Add-Content -Path $path -Value "`"isRackConnect`" = `"$($isRackConnect.toString().toLower())`""
+   Add-Content -Path $path -Value "`"isManaged`" = `"$($isManaged.toString().toLower())`""
    Add-Content -Path $path -Value "`"defaultRegion`" = `"$defaultRegion`""
    Add-Content -Path $path -Value "}"
    Set-Service Browser -startuptype "manual"
@@ -195,8 +195,8 @@ if($role -eq "Pull") {
    $Global:catalog = Get-ServiceCatalog
    $Global:AuthToken = @{"X-Auth-Token"=($catalog.access.token.id)}
    $Global:defaultRegion = $catalog.access.user.'RAX-AUTH:defaultRegion'
-   if(($catalog.access.user.roles | ? name -eq "rack_connect").id.count -gt 0) { $Global:isRackConnect = [bool]$true } else { $Global:isRackConnect = [bool]$false } 
-   if(($catalog.access.user.roles | ? name -eq "rax_managed").id.count -gt 0) { $Global:isManaged = [bool]$true } else { $Global:isManaged = [bool]$false } 
+   if(($catalog.access.user.roles | ? name -eq "rack_connect").id.count -gt 0) { $Global:isRackConnect = $true } else { $Global:isRackConnect = $false } 
+   if(($catalog.access.user.roles | ? name -eq "rax_managed").id.count -gt 0) { $Global:isManaged = $true } else { $Global:isManaged = $false } 
    Check-Hash
 }
 else {
