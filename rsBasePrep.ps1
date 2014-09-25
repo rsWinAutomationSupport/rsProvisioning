@@ -448,6 +448,7 @@ Function Install-DSC {
       Remove-Item -Path "C:\Windows\System32\Configuration\Current.mof" -Force
    }
    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing LCM"
+   Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.prov, "rsLCM.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
    ### Insall LCM on Current server
    do {
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for LCM installation to complete, sleeping 5 seconds"
