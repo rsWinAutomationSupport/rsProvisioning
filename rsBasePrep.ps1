@@ -461,11 +461,6 @@ Function Install-DSC {
       Set-Content -Path $($d.wD, "rsEnvironments.hash" -join '\') -Value (Get-FileHash -Path $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')).hash
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing WindowsFeature Web-Server"
       Install-WindowsFeature Web-Server
-      do {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for IIS installation, sleeping 5 seconds"
-         Start-Sleep -Seconds 5
-      }
-      while((Get-WindowsFeature -Name web-server).Installed -eq $false)
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "IIS installation Complete."
       ### Install SSL certificates on pullserver
       Install-Certs
