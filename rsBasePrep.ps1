@@ -313,8 +313,8 @@ Function Create-PullServerInfo {
       Add-Content -Path $path -Value "`"pullServerPrivateIp`" = `"$pullServerPrivateIp`""
       Add-Content -Path $path -Value "`"pullServerPublicIp`" = `"$pullServerPublicIp`""
       Add-Content -Path $path -Value "`"region`" = `"$region`""
-      Add-Content -Path $path -Value "`"isRackConnect`" = `"$isRackConnect`""
-      Add-Content -Path $path -Value "`"isManaged`" = `"$isManaged`""
+      Add-Content -Path $path -Value "`"isRackConnect`" = `"[bool]$isRackConnect`""
+      Add-Content -Path $path -Value "`"isManaged`" = `"[bool]$isManaged`""
       Add-Content -Path $path -Value "`"defaultRegion`" = `"$defaultRegion`""
       Add-Content -Path $path -Value "}"
       Start-Service Browser
