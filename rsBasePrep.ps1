@@ -190,6 +190,7 @@ Function Check-RC {
          Start-Sleep -Seconds 30
       }
       while ($rcStatus -ne "DEPLOYED")
+      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "RackConnect status is: $rsStatus"
    }
 }
 
@@ -205,15 +206,16 @@ Function Check-Managed {
       if( $session.GetValue("vm-data/user-metadata/rax_service_level_automation").value.count -gt 0 ) { $exists = $true }
       else { 
          $exists = $false 
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "rax_service_level_automation is not completed"
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "rax_service_level_automation is not completed."
       } 
       if ( $exists )
       {
          do {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for rax_service_level_automation"
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for rax_service_level_automation."
             Start-Sleep -Seconds 30
          }
          while ( (Test-Path "C:\Windows\Temp\rs_managed_cloud_automation_complete.txt" ) -eq $false)
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "rax_service_level_automation complete."
       }
    } 
 }
