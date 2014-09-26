@@ -103,6 +103,12 @@ Function Check-Hash {
 }
 ### Client tasks
 Function Check-Hosts {
+   Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Pulling current configurations from github"
+   chdir $($d.wD, $d.mR -join '\')
+   Start-Service Browser
+   Start -Wait git pull
+   Stop-Service Browser
+   Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Checking hosts file entry for pullserver"
    $serverRegion = Get-Region
    $pullServerRegion = $pullServerInfo.region
    $pullServerName = $pullServerInfo.pullServerName
@@ -119,30 +125,53 @@ Function Check-Hosts {
    if($entryExist) {
       $entryExist.Split()
       if(($entryExist[0]) -ne $pullServerIP) {
+         Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Host file entry for pullserver does not match, updating hosts file"
          ((Get-Content "${env:windir}\system32\drivers\etc\hosts") -notmatch "^\s*$") -notmatch "^[^#]*\s+$pullServerName" | Set-Content "${env:windir}\system32\drivers\etc\hosts"
          Add-Content -Path "${env:windir}\system32\drivers\etc\hosts" -Value $hostEntry -Force -Encoding ASCII
       }
+      else {
+         Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Host file entry for pullserver matches, no changes to host file are needed."
+      }
    }
    else {
+      Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Host file entry for pullserver does not exist, creating entry for pullserver in host file."
       Add-Content -Path "${env:windir}\system32\drivers\etc\hosts" -Value $hostEntry -Force -Encoding ASCII
    }
 }
 taskkill /F /IM WmiPrvSE.exe
 Function Install-Certs {
-   Stop-Service Browser
-   Remove-Item -Path 'C:\Program Files (x86)\Git\.ssh\id_rsa*'
-   Get-ChildItem Cert:\LocalMachine\Root\ | where {$_.Subject -eq $cN} | Remove-Item
-   Copy-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa'
-   Copy-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa.pub'
-   powershell.exe certutil -addstore -f root $($d.wD, $d.mR, "Certificates\PullServer.crt" -join '\')
+   Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Checking github SSH Key."
+   if(!((Get-Content (Join-Path "C:\DevOps\DDI_rsConfigs\Certificates" -ChildPath "id_rsa.pub")).Split("==")[0] + "==") -eq ((Get-Content -Path (Join-Path "C:\Program Files (x86)\Git\.ssh" -ChildPath "id_rsa.pub")).Split("==")[0] + "==")) {
+      Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "SSH Key does not match, installing new SSH Key."
+      Remove-Item -Path 'C:\Program Files (x86)\Git\.ssh\id_rsa*'
+      Get-ChildItem Cert:\LocalMachine\Root\ | where {$_.Subject -eq $cN} | Remove-Item
+      Copy-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa'
+      Copy-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa.pub'
+   }
+   else {
+      Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "SSH Key matches."
+   }
+   Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Checking pullserver certificate."
+   $cN = "CN=" + $env:COMPUTERNAME
+   if(!(Get-ChildItem Cert:\LocalMachine\Root\ | ? Subject -eq $cN)) {
+      Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "No Pullserver SSL certificate installed in trusted root, Installing new SSL certificate."
+      powershell.exe certutil -addstore -f root $($d.wD, $d.mR, "Certificates\PullServer.crt" -join '\')
+   }
+   else {
+      if(!((Get-ChildItem Cert:\LocalMachine\Root\ | ? Subject -eq $cN).Thumbprint) -eq $((Get-PfxCertificate -FilePath $($d.wD,$d.mR,"Certificates\PullServer.crt" -join'\')).Thumbprint)) {
+         Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Pullserver SSL does not match, Installing new SSL certificate."
+         powershell.exe certutil -addstore -f root $($d.wD, $d.mR, "Certificates\PullServer.crt" -join '\')
+      }
+      else {
+         Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Pullserver SSL certificate matches, nothing to be done."
+      }
+      
+   }
+   Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Completed client tests, starting consistency task."
    taskkill /F /IM WmiPrvSE.exe
    Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
 }
 $role = Get-Role
-   chdir $($d.wD, $d.mR -join '\')
-   Start-Service Browser
-   Start -Wait git pull
-   Stop-Service Browser
 if($role -eq "Pull") {
    $Global:catalog = Get-ServiceCatalog
    $Global:AuthToken = @{"X-Auth-Token"=($catalog.access.token.id)}
