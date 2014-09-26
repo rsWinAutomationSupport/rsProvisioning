@@ -480,11 +480,11 @@ Function Install-DSC {
       }
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing DSC $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')"
       Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
-      do {
+      <#do {
          Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for PullServer DSC installation, sleeping 15 seconds"
          Start-Sleep -Seconds 15
       }
-      while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
+      while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))#>
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "PullServer DSC installation Complete."
    }
    return
