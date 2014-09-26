@@ -1,6 +1,11 @@
 ﻿. "C:\cloud-automation\secrets.ps1"
 . "$($d.wD, $d.mR, "PullServerInfo.ps1" -join '\')"
-if((Get-ScheduledTask -TaskName "BasePrep").State -eq "Running") {
+try {
+   $basePrepState = (Get-ScheduledTask -TaskName "BasePrep").State
+}
+catch {
+}
+if($basePrepState -eq "Running") {
    Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "BasePrep task is currently running, aborting Verify task"
    break
 }
@@ -55,96 +60,87 @@ Function Check-Hash {
       taskkill /F /IM WmiPrvSE.exe
       Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
       ### Watch Pullserver DSC install proccess and wait for completion
-      do {
-         if((Get-ScheduledTask -TaskName "Consistency").State -eq "Ready") {
-            Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Consistency task is not running and no Current.mof file exists, restarting rsEnvironments.ps1."
-            taskkill /F /IM WmiPrvSE.exe
-            Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+      if(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof") -and (Test-Path -Path "C:\Windows\System32\Configuration\Pending.mof")) {
+         do {
+            if((Get-ScheduledTask -TaskName "Consistency").State -eq "Ready") {
+               Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Consistency task is not running and no Current.mof file exists, restarting rsEnvironments.ps1."
+               taskkill /F /IM WmiPrvSE.exe
+               Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+            }
+            Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Starting to sleep and will recheck status of DSC."
+            Start-Sleep -Seconds 30
          }
-         Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Starting to sleep and will recheck status of DSC."
-         Start-Sleep -Seconds 30
+         while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
       }
-      while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
    }
    $checkHash = Get-FileHash $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')
    $currentHash = Get-Content $($d.wD, "rsEnvironments.hash" -join '\')
    if($checkHash.Hash -ne $currentHash) {
       Set-Content -Path $($d.wD, "rsEnvironments.hash" -join '\') -Value (Get-FileHash -Path $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')).hash
-      chdir $($d.wD, $d.mR -join '\')
-      Start-Service Browser
-      Start -Wait git pull
-      Stop-Service Browser
       taskkill /F /IM WmiPrvSE.exe
       Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
       ### Watch Pullserver DSC install proccess and wait for completion
-      do {
-         Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Current.mof has not yet been created and Pending.mof does not exist."
-         if((Get-ScheduledTask -TaskName "Consistency").State -eq "Ready") {
-            Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Consistency task is not running and no Current.mof file exists, restarting rsEnvironments.ps1."
-            taskkill /F /IM WmiPrvSE.exe
-            Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+      if(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof") -and (Test-Path -Path "C:\Windows\System32\Configuration\Pending.mof")) {
+         do {
+            Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Current.mof has not yet been created and Pending.mof does exist."
+            if((Get-ScheduledTask -TaskName "Consistency").State -eq "Ready") {
+               Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Consistency task is not running and no Current.mof file exists, restarting rsEnvironments.ps1."
+               taskkill /F /IM WmiPrvSE.exe
+               Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+            }
+            Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Starting to sleep and will recheck status of DSC."
+            Start-Sleep -Seconds 30
          }
-         Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Starting to sleep and will recheck status of DSC."
-         Start-Sleep -Seconds 30
+         while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
       }
-      while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
-   }
-   
-   else {
+      
+      else {
+         taskkill /F /IM WmiPrvSE.exe
+         Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+         ### Watch Pullserver DSC install proccess and wait for completion
+         do {
+            Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Current.mof has not yet been created and Pending.mof does not exist."
+            if((Get-ScheduledTask -TaskName "Consistency").State -eq "Ready") {
+               Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Consistency task is not running and no Current.mof file exists, restarting rsEnvironments.ps1."
+               taskkill /F /IM WmiPrvSE.exe
+               Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+            }
+            Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Starting to sleep and will recheck status of DSC."
+            Start-Sleep -Seconds 30
+         }
+         while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
+      }
+      
+      $pullServerName = $env:COMPUTERNAME
+      $pullServerPrivateIP = (Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -match '^10\.').IPAddress
+      $pullServerPublicIp = Get-AccessIPv4
+      $path = $($d.wD, $d.mR, "PullServerInfo.ps1" -join '\')
+      if(Test-Path -Path $path) {
+         Remove-Item -Path $path -Force
+      }
+      $region = Get-Region
       chdir $($d.wD, $d.mR -join '\')
+      New-Item -path $path -ItemType file
+      Add-Content -Path $path -Value "`$pullServerInfo = @{"
+      Add-Content -Path $path -Value "`"pullServerName`" = `"$pullServerName`""
+      Add-Content -Path $path -Value "`"pullServerPrivateIp`" = `"$pullServerPrivateIp`""
+      Add-Content -Path $path -Value "`"pullServerPublicIp`" = `"$pullServerPublicIp`""
+      Add-Content -Path $path -Value "`"region`" = `"$region`""
+      Add-Content -Path $path -Value "`"isRackConnect`" = `$$($isRackConnect.toString().toLower())"
+      Add-Content -Path $path -Value "`"isManaged`" = `$$($isManaged.toString().toLower())"
+      Add-Content -Path $path -Value "`"defaultRegion`" = `"$defaultRegion`""
+      Add-Content -Path $path -Value "}"
+      Set-Service Browser -startuptype "manual"
       Start-Service Browser
-      Start -Wait git pull
+      Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD + "\" + $d.mR + "\" + "PullServerInfo.ps1")"
+      Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -am `"$pullServerName pushing PullServerInfo.ps1`""
+      Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.br)"
+      Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
       Stop-Service Browser
-      taskkill /F /IM WmiPrvSE.exe
-      Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
-      ### Watch Pullserver DSC install proccess and wait for completion
-      do {
-         Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Current.mof has not yet been created and Pending.mof does not exist."
-         if((Get-ScheduledTask -TaskName "Consistency").State -eq "Ready") {
-            Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Consistency task is not running and no Current.mof file exists, restarting rsEnvironments.ps1."
-            taskkill /F /IM WmiPrvSE.exe
-            Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
-         }
-         Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1002 -Message "Starting to sleep and will recheck status of DSC."
-         Start-Sleep -Seconds 30
-      }
-      while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
-   }
-   
-   $pullServerName = $env:COMPUTERNAME
-   $pullServerPrivateIP = (Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -match '^10\.').IPAddress
-   $pullServerPublicIp = Get-AccessIPv4
-   $path = $($d.wD, $d.mR, "PullServerInfo.ps1" -join '\')
-   if(Test-Path -Path $path) {
-      Remove-Item -Path $path -Force
-   }
-   $region = Get-Region
-   chdir $($d.wD, $d.mR -join '\')
-   New-Item -path $path -ItemType file
-   Add-Content -Path $path -Value "`$pullServerInfo = @{"
-   Add-Content -Path $path -Value "`"pullServerName`" = `"$pullServerName`""
-   Add-Content -Path $path -Value "`"pullServerPrivateIp`" = `"$pullServerPrivateIp`""
-   Add-Content -Path $path -Value "`"pullServerPublicIp`" = `"$pullServerPublicIp`""
-   Add-Content -Path $path -Value "`"region`" = `"$region`""
-   Add-Content -Path $path -Value "`"isRackConnect`" = `$$($isRackConnect.toString().toLower())"
-   Add-Content -Path $path -Value "`"isManaged`" = `$$($isManaged.toString().toLower())"
-   Add-Content -Path $path -Value "`"defaultRegion`" = `"$defaultRegion`""
-   Add-Content -Path $path -Value "}"
-   Set-Service Browser -startuptype "manual"
-   Start-Service Browser
-   Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD + "\" + $d.mR + "\" + "PullServerInfo.ps1")"
-   Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -am `"$pullServerName pushing PullServerInfo.ps1`""
-   Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.br)"
-   Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
-   Stop-Service Browser
-   
+   }  
 }
 ### Client tasks
 Function Check-Hosts {
-   chdir $($d.wD, $d.mR -join '\')
-   Start-Service Browser
-   Start -Wait git pull
-   Stop-Service Browser
    $serverRegion = Get-Region
    $pullServerRegion = $pullServerInfo.region
    $pullServerName = $pullServerInfo.pullServerName
@@ -171,6 +167,7 @@ Function Check-Hosts {
 }
 taskkill /F /IM WmiPrvSE.exe
 Function Install-Certs {
+   Stop-Service Browser
    Remove-Item -Path 'C:\Program Files (x86)\Git\.ssh\id_rsa*'
    Get-ChildItem Cert:\LocalMachine\Root\ | where {$_.Subject -eq $cN} | Remove-Item
    Copy-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa'
@@ -188,6 +185,10 @@ Function Install-Certs {
    while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
 }
 $role = Get-Role
+   chdir $($d.wD, $d.mR -join '\')
+   Start-Service Browser
+   Start -Wait git pull
+   Stop-Service Browser
 if($role -eq "Pull") {
    $Global:catalog = Get-ServiceCatalog
    $Global:AuthToken = @{"X-Auth-Token"=($catalog.access.token.id)}
