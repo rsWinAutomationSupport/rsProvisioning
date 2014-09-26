@@ -96,6 +96,10 @@ Function Check-Hash {
       Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
       Stop-Service Browser
    }  
+   if($checkHash.Hash -eq $currentHash) {
+      Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "rsEnvironments hash matches, no changes have been made to rsEnvironments, executing consistency check"
+      Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
+   }
 }
 ### Client tasks
 Function Check-Hosts {
