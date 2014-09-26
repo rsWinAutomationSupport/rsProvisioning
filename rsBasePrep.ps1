@@ -683,9 +683,10 @@ Function Update-XenTools {
       [System.IO.Compression.ZipFile]::ExtractToDirectory($path, $destination)
       Write-Log -value "Installing Xen Tools 6.2"
       Start -Wait $($d.wD, "xs-tools-6.2.0\installwizard.msi" -join '\' ) -ArgumentList '/qn PATH="C:\Program Files\Citrix\XenTools\"'
-      
+      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "XenTools installation complete."
    }
    if($osVersion -gt "6.3") {
+      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "OS verision is $osVersion no XenTools installation needed."
       ### If osversion 2012 R2 no xentools install needed and no reboot needed, setting stage to 3 and returning to start stage 3
       Set-Stage -value 3
       Restart-Computer -Force
