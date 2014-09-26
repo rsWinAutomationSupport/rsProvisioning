@@ -51,10 +51,6 @@ Function Download-File {
 ### will pull before running rsEnvironments.ps1
 Function Check-Hash {
    Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Pulling current configurations from github"
-   chdir $($d.wD, $d.mR -join '\')
-   Start-Service Browser
-   Start -Wait git pull
-   Stop-Service Browser
    if((Test-Path $($d.wD, "rsEnvironments.hash" -join '\')) -eq $false) {
       Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "File $($d.wD, "rsEnvironments.hash" -join '\') was not found, creating hash file and executing rsEnvironments.ps1"
       Set-Content -Path $($d.wD, "rsEnvironments.hash" -join '\') -Value (Get-FileHash -Path $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')).hash
@@ -124,10 +120,6 @@ Function Check-Hash {
 ### Client tasks
 Function Check-Hosts {
    Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Pulling current configurations from github"
-   chdir $($d.wD, $d.mR -join '\')
-   Start-Service Browser
-   Start -Wait git pull
-   Stop-Service Browser
    Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Checking hosts file entry for pullserver"
    $serverRegion = Get-Region
    $pullServerRegion = $pullServerInfo.region
@@ -158,7 +150,7 @@ Function Check-Hosts {
       Add-Content -Path "${env:windir}\system32\drivers\etc\hosts" -Value $hostEntry -Force -Encoding ASCII
    }
 }
-taskkill /F /IM WmiPrvSE.exe
+
 Function Install-Certs {
    Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Checking github SSH Key."
    if(!((Get-Content (Join-Path "C:\DevOps\DDI_rsConfigs\Certificates" -ChildPath "id_rsa.pub")).Split("==")[0] + "==") -eq ((Get-Content -Path (Join-Path "C:\Program Files (x86)\Git\.ssh" -ChildPath "id_rsa.pub")).Split("==")[0] + "==")) {
@@ -192,6 +184,10 @@ Function Install-Certs {
    Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
 }
 $role = Get-Role
+   chdir $($d.wD, $d.mR -join '\')
+   Start-Service Browser
+   Start -Wait git pull
+   Stop-Service Browser
 if($role -eq "Pull") {
    $Global:catalog = Get-ServiceCatalog
    $Global:AuthToken = @{"X-Auth-Token"=($catalog.access.token.id)}
