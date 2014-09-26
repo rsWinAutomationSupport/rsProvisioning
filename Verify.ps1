@@ -50,21 +50,22 @@ Function Download-File {
 }
 ### will pull before running rsEnvironments.ps1
 Function Check-Hash {
+   Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Pulling current configurations from github"
+   chdir $($d.wD, $d.mR -join '\')
+   Start-Service Browser
+   Start -Wait git pull
+   Stop-Service Browser
    if((Test-Path $($d.wD, "rsEnvironments.hash" -join '\')) -eq $false) {
+      Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "File $($d.wD, "rsEnvironments.hash" -join '\') was not found, creating hash file and executing rsEnvironments.ps1"
       Set-Content -Path $($d.wD, "rsEnvironments.hash" -join '\') -Value (Get-FileHash -Path $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')).hash
-      chdir $($d.wD, $d.mR -join '\')
-      Start-Service Browser
-      Start -Wait git pull
-      Stop-Service Browser
       taskkill /F /IM WmiPrvSE.exe
       Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
    }
    $checkHash = Get-FileHash $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')
    $currentHash = Get-Content $($d.wD, "rsEnvironments.hash" -join '\')
    if($checkHash.Hash -ne $currentHash) {
+      Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "rsEnvironments hash mismatch rsEnvironments has been updated, executing rsEnvironments.ps1"
       Set-Content -Path $($d.wD, "rsEnvironments.hash" -join '\') -Value (Get-FileHash -Path $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')).hash
-      taskkill /F /IM WmiPrvSE.exe
-      Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
       taskkill /F /IM WmiPrvSE.exe
       Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
       $pullServerName = $env:COMPUTERNAME
@@ -76,6 +77,7 @@ Function Check-Hash {
       }
       $region = Get-Region
       chdir $($d.wD, $d.mR -join '\')
+      Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Updating pullserverInfo.ps1 and pushing to github"
       New-Item -path $path -ItemType file
       Add-Content -Path $path -Value "`$pullServerInfo = @{"
       Add-Content -Path $path -Value "`"pullServerName`" = `"$pullServerName`""
