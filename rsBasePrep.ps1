@@ -190,6 +190,7 @@ Function Check-RC {
          Start-Sleep -Seconds 30
       }
       while ($rcStatus -ne "DEPLOYED")
+      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "RackConnect status is: $rsStatus"
    }
 }
 
@@ -205,15 +206,16 @@ Function Check-Managed {
       if( $session.GetValue("vm-data/user-metadata/rax_service_level_automation").value.count -gt 0 ) { $exists = $true }
       else { 
          $exists = $false 
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "rax_service_level_automation is not completed"
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "rax_service_level_automation is not completed."
       } 
       if ( $exists )
       {
          do {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for rax_service_level_automation"
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for rax_service_level_automation."
             Start-Sleep -Seconds 30
          }
          while ( (Test-Path "C:\Windows\Temp\rs_managed_cloud_automation_complete.txt" ) -eq $false)
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "rax_service_level_automation complete."
       }
    } 
 }
@@ -480,11 +482,11 @@ Function Install-DSC {
       }
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing DSC $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')"
       Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
-      do {
+      <#do {
          Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for PullServer DSC installation, sleeping 15 seconds"
          Start-Sleep -Seconds 15
       }
-      while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
+      while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))#>
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "PullServer DSC installation Complete."
    }
    return
@@ -681,9 +683,10 @@ Function Update-XenTools {
       [System.IO.Compression.ZipFile]::ExtractToDirectory($path, $destination)
       Write-Log -value "Installing Xen Tools 6.2"
       Start -Wait $($d.wD, "xs-tools-6.2.0\installwizard.msi" -join '\' ) -ArgumentList '/qn PATH="C:\Program Files\Citrix\XenTools\"'
-      
+      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "XenTools installation complete."
    }
    if($osVersion -gt "6.3") {
+      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "OS verision is $osVersion no XenTools installation needed."
       ### If osversion 2012 R2 no xentools install needed and no reboot needed, setting stage to 3 and returning to start stage 3
       Set-Stage -value 3
       Restart-Computer -Force
