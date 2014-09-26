@@ -320,7 +320,15 @@ Function Create-PullServerInfo {
       Add-Content -Path $path -Value "`"defaultRegion`" = `"$defaultRegion`""
       Add-Content -Path $path -Value "}"
       Start-Service Browser
-      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD + "\" + $d.mR + "\" + "PullServerInfo.ps1")"
+      $trackedFiles = @()
+      $fileNames = (Get-Item -Path $($d.wD, $d.mR, "Certificates", '*' -join '\')).Name
+      foreach($fileName in $fileNames) {
+         $trackedFiles += $($d.wD, $d.mR, "Certificates", $fileName -join '\')
+      }
+      $trackedFiles += $($d.wD, $d.mR, "PullServerInfo.ps1" -join '\')
+      foreach($trackedFile in $trackedFiles) {
+         Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $trackedFile"
+      }
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -a -m `"$pullServerName pushing PullServerInfo.ps1`""
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.br)"
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
@@ -481,9 +489,9 @@ Function Install-DSC {
          Remove-Item -Path "C:\Windows\System32\Configuration\Current.mof" -Force
       }
       do {
-      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing DSC $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')"
-      taskkill /F /IM WmiPrvSE.exe
-      Invoke-Command -ScriptBlock { start -Wait -NoNewWindow PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing DSC $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')"
+         taskkill /F /IM WmiPrvSE.exe
+         Invoke-Command -ScriptBlock { start -Wait -NoNewWindow PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
       }
       while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "PullServer DSC installation Complete."
