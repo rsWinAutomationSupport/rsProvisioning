@@ -741,10 +741,6 @@ Function Update-HostFile {
 #                                             Function - Install SSL cert used for Client/Pull communications
 ##################################################################################################################################
 Function Install-Certs {
-   chdir $($d.wD, $d.mR -join '/')
-   Start-Service Browser
-   Start -Wait $gitExe pull
-   Stop-Service Browser
    if(!(Test-Path -Path $($d.wD, $d.mR, "Certificates" -join '\'))) {
       New-Item $($d.wD, $d.mR, "Certificates" -join '\') -ItemType Container
    }
