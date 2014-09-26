@@ -83,7 +83,15 @@ Function Check-Hash {
       }
       $region = Get-Region
       chdir $($d.wD, $d.mR -join '\')
+      Set-Service Browser -startuptype "manual"
+      Start-Service Browser
       Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Updating pullserverInfo.ps1 and pushing to github"
+      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.br)"
+      Remove-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa*" -join '\') -Force
+      Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa" -Destination $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\') -Force
+      Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa.pub" -Destination $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\') -Force
+      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\')"
+      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\')"
       New-Item -path $path -ItemType file
       Add-Content -Path $path -Value "`$pullServerInfo = @{"
       Add-Content -Path $path -Value "`"pullServerName`" = `"$pullServerName`""
@@ -94,11 +102,8 @@ Function Check-Hash {
       Add-Content -Path $path -Value "`"isManaged`" = `$$($isManaged.toString().toLower())"
       Add-Content -Path $path -Value "`"defaultRegion`" = `"$defaultRegion`""
       Add-Content -Path $path -Value "}"
-      Set-Service Browser -startuptype "manual"
-      Start-Service Browser
       Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD + "\" + $d.mR + "\" + "PullServerInfo.ps1")"
-      Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -am `"$pullServerName pushing PullServerInfo.ps1`""
-      Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.br)"
+      Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -am `"$pullServerName sshkey and pullserverinfo`""
       Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
       Stop-Service Browser
    }  
