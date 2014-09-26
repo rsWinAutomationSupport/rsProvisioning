@@ -745,6 +745,7 @@ Function Install-Certs {
       New-Item $($d.wD, $d.mR, "Certificates" -join '\') -ItemType Container
    }
    if($role -eq "Pull") {
+      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.br)"
       Remove-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa*" -join '\') -Force
       Write-Log -value "Installing Certificate"
       Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa" -Destination $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\') -Force
@@ -754,7 +755,6 @@ Function Install-Certs {
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\')"
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\')"
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -a -m `"pushing ssh keys`""
-      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.br)"
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
       Stop-Service Browser
    }
