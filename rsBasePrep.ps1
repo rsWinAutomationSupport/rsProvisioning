@@ -341,7 +341,7 @@ Function Set-GitPath {
 Function Install-TempDSC {
    if($role -eq "Pull") {
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing inital temporary DSC configuration $($d.wD, $d.prov, "initDSC.ps1" -join '\')"
-      Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.prov, "initDSC.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+      Invoke-Command -ScriptBlock {Start -Wait -NoNewWindow PowerShell.exe $($d.wD, $d.prov, "initDSC.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
       do {
          Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for temporary DSC intallation to complete, rechecking in 5 seconds"
          Start-Sleep -Seconds 5
@@ -450,7 +450,7 @@ Function Install-DSC {
       Remove-Item -Path "C:\Windows\System32\Configuration\Current.mof" -Force
    }
    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing LCM"
-   Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.prov, "rsLCM.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+   Invoke-Command -ScriptBlock { Start -Wait -NoNewWindow PowerShell.exe $($d.wD, $d.prov, "rsLCM.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
    ### Insall LCM on Current server
    do {
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for LCM installation to complete, sleeping 5 seconds"
@@ -480,13 +480,12 @@ Function Install-DSC {
       if(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof") {
          Remove-Item -Path "C:\Windows\System32\Configuration\Current.mof" -Force
       }
+      do {
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing DSC $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')"
-      Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
-      <#do {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for PullServer DSC installation, sleeping 15 seconds"
-         Start-Sleep -Seconds 15
+      taskkill /F /IM WmiPrvSE.exe
+      Invoke-Command -ScriptBlock { start -Wait -NoNewWindow PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
       }
-      while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))#>
+      while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "PullServer DSC installation Complete."
    }
    return
