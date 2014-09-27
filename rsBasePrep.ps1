@@ -456,6 +456,13 @@ Function Install-DSC {
       Start-Sleep -Seconds 5
    }
    while(!(Test-Path -Path "C:\Windows\System32\Configuration\MetaConfig.mof"))
+   if($role -ne "Pull") {
+      do {
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for Client to install DSC configuration, sleeping 10 seconds"
+         Start-Sleep 10
+      }
+      while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
+   }
    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "LCM installation complete"
    ### Pullserver specific tasks, install WindowsFeature Web-Service, install SSL certificates then run rsEnvironments.ps1 to install DSC
    if($role -eq "Pull") {
@@ -736,13 +743,13 @@ Function Install-Certs {
       New-Item $($d.wD, $d.mR, "Certificates" -join '\') -ItemType Container
    }
    if($role -eq "Pull") {
+      Start-Service Browser
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.br)"
       Remove-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa*" -join '\') -Force
       Write-Log -value "Installing Certificate"
       Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa" -Destination $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\') -Force
       Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa.pub" -Destination $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\') -Force
       chdir $($d.wD, $d.mR -join '\')
-      Start-Service Browser
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\')"
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\')"
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -a -m `"pushing ssh keys`""
@@ -802,13 +809,14 @@ switch ($stage) {
       Create-Log
       Write-Log -value "Starting Stage 1"
       Check-RC
+      Check-Managed
       Load-Globals
       Disable-MSN
+      Set-GitPath
       Create-SshKey
       Get-TempPullDSC
-      Check-Managed
+      Load-Globals
       Create-ClientData
-      Set-GitPath
       Disable-TOE
       tzutil /s "Central Standard Time"
       Create-ScheduledTask
