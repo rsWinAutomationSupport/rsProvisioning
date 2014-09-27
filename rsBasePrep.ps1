@@ -457,9 +457,13 @@ Function Install-DSC {
    }
    while(!(Test-Path -Path "C:\Windows\System32\Configuration\MetaConfig.mof"))
    if($role -ne "Pull") {
+      $i = 0
       do {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for Client to install DSC configuration, sleeping 10 seconds"
-         Start-Sleep 10
+         if($i -gt 5) {
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for Client to install DSC configuration"
+            $i = 0
+         }
+         $i ++
       }
       while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
    }
