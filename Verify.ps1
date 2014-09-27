@@ -170,7 +170,7 @@ Function Install-Certs {
    }
    Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Checking pullserver certificate."
    $cN = "CN=" + $pullServerName
-   if((Get-ChildItem Cert:\LocalMachine\Root\ | ? Subject -eq $cN).count -lt 0) {
+   if((Get-ChildItem Cert:\LocalMachine\Root\ | ? Subject -eq $cN).count -lt 1) {
       Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "No Pullserver SSL certificate installed in trusted root, Installing new SSL certificate."
       powershell.exe certutil -addstore -f root $($d.wD, $d.mR, "Certificates\PullServer.crt" -join '\')
    }
