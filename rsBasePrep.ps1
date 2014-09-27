@@ -181,13 +181,9 @@ Function Check-RC {
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "The server is Rackconnect and is in the default region"
       $uri = $(("https://", $currentRegion -join ''), ".api.rackconnect.rackspace.com/v1/automation_status?format=text" -join '')
       do {
-         Write-Host "Running"
-         try {
-            $rcStatus = Invoke-RestMethod -Uri $uri -Method GET -ContentType application/json
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "RackConnect status is: $rsStatus"
-         }
-         catch { $rsStatus = "FAILED" }
-         Start-Sleep -Seconds 30
+         $rcStatus = Invoke-RestMethod -Uri $uri -Method GET -ContentType application/json
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "RackConnect status is: $rsStatus"
+         Start-Sleep -Seconds 10
       }
       while ($rcStatus -ne "DEPLOYED")
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "RackConnect status is: $rsStatus"
@@ -292,11 +288,11 @@ Function Create-SshKey {
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "config --system user.name $serverName"
       
       chdir $($d.wD, $d.mR -join '\')
-      if((Test-Path -Path $($d.wD, $d.mR, "Certificates",  "id_rsa..pub"  -join '\'))  -or (Test-Path -Path $($d.wD, $d.mR, "Certificates",  "id_rsa..pub"  -join '\')))  {
+      <#if((Test-Path -Path $($d.wD, $d.mR, "Certificates",  "id_rsa..pub"  -join '\'))  -or (Test-Path -Path $($d.wD, $d.mR, "Certificates",  "id_rsa..pub"  -join '\')))  {
          Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Removing local SSH Keys"
          Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "rm -rf $($d.wD, $d.mR, "Certificates",  "id_rsa.*"  -join '\')"
          Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -a -m `"Removing local SSH Keys`""
-      }
+      }#>
       Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa" -Destination $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\') -Force
       Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa.pub" -Destination $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\') -Force
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\')"
