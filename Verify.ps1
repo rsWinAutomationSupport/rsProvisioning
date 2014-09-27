@@ -161,7 +161,6 @@ Function Install-Certs {
    if(!((Get-Content (Join-Path "C:\DevOps\DDI_rsConfigs\Certificates" -ChildPath "id_rsa.pub")).Split("==")[0] + "==") -eq ((Get-Content -Path (Join-Path "C:\Program Files (x86)\Git\.ssh" -ChildPath "id_rsa.pub")).Split("==")[0] + "==")) {
       Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "SSH Key does not match, installing new SSH Key."
       Remove-Item -Path 'C:\Program Files (x86)\Git\.ssh\id_rsa*'
-      Get-ChildItem Cert:\LocalMachine\Root\ | where {$_.Subject -eq $cN} | Remove-Item
       Copy-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa'
       Copy-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa.pub'
    }
@@ -177,6 +176,7 @@ Function Install-Certs {
    else {
       if(!((Get-ChildItem Cert:\LocalMachine\Root\ | ? Subject -eq $cN).Thumbprint) -eq $((Get-PfxCertificate -FilePath $($d.wD,$d.mR,"Certificates\PullServer.crt" -join'\')).Thumbprint)) {
          Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Pullserver SSL does not match, Installing new SSL certificate."
+         Get-ChildItem Cert:\LocalMachine\Root\ | where {$_.Subject -eq $cN} | Remove-Item
          powershell.exe certutil -addstore -f root $($d.wD, $d.mR, "Certificates\PullServer.crt" -join '\')
       }
       else {
