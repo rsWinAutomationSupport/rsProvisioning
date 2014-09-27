@@ -286,19 +286,6 @@ Function Create-SshKey {
       Invoke-RestMethod -Uri "https://api.github.com/user/keys" -Headers @{"Authorization" = "token $($d.gAPI)"} -Body $json -ContentType application/json -Method Post
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "config --system user.email $serverName@localhost.local"
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "config --system user.name $serverName"
-      
-      chdir $($d.wD, $d.mR -join '\')
-      <#if((Test-Path -Path $($d.wD, $d.mR, "Certificates",  "id_rsa..pub"  -join '\'))  -or (Test-Path -Path $($d.wD, $d.mR, "Certificates",  "id_rsa..pub"  -join '\')))  {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Removing local SSH Keys"
-         Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "rm -rf $($d.wD, $d.mR, "Certificates",  "id_rsa.*"  -join '\')"
-         Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -a -m `"Removing local SSH Keys`""
-      }#>
-      Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa" -Destination $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\') -Force
-      Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa.pub" -Destination $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\') -Force
-      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\')"
-      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\')"
-      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -a -m `"pushing ssh keys`""
-      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
    }
    Stop-Service Browser
    return
@@ -408,18 +395,18 @@ Function Get-TempPullDSC {
          }
          try {
             chdir $($d.wD)
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning $(("git@github.com:", $d.gCA -join ''), $($($d.mR), ".git" -join '') -join '/')"
-            Start -Wait $gitExe -ArgumentList "clone  $(("git@github.com:", $d.gCA -join ''), $($($d.mR), ".git" -join '') -join '/')"
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning $(("git@github.com:", $d.gCA -join ''), ($($d.mR), ".git" -join '') -join '/')"
+            Start -Wait $gitExe -ArgumentList "clone  $((('git@github.com:', $($d.gCA) -join ''), ($($d.mR), '.git' -join '')) -join '/')"
             if(Test-Path -Path $($d.wD, $($d.mR) -join '\')) {
                $isDone = $true
             }
             else {
-               Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone $(("git@github.com:", $d.gCA -join ''), $($($d.mR), ".git" -join '') -join '/'), sleeping for 5 seconds then trying again. `n $($_.Exception.Message)"
+               Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone $(("git@github.com:", $d.gCA -join ''), ($($d.mR), ".git" -join '') -join '/'), sleeping for 5 seconds then trying again. `n $($_.Exception.Message)"
                $timeOut += 1
             }
          }
          catch {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone $(("git@github.com:", $d.gCA -join ''), $($($d.mR), ".git" -join '') -join '/'), sleeping for 5 seconds then trying again. `n $($_.Exception.Message)"
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone $(("git@github.com:", $d.gCA -join ''), ($($d.mR), ".git" -join '') -join '/'), sleeping for 5 seconds then trying again. `n $($_.Exception.Message)"
             $timeOut += 1
             Start-Sleep -Seconds 5
          }
@@ -442,7 +429,7 @@ Function Get-TempPullDSC {
          try {
             chdir $($d.wD)
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning $($d.mR , ".git" -join '') $((("https://", "##REDACTED_GITHUB_APIKEY##", "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/')"
-            Start -Wait $gitExe -ArgumentList "clone  $((("https://", $d.gAPI, "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/') "
+            Start -Wait $gitExe -ArgumentList "clone  $((("https://", $d.gAPI, "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/')"
             if(Test-Path -Path $($d.wD, $($d.mR) -join '\')) {
                $isDone = $true
             }
@@ -748,7 +735,7 @@ Function Install-Certs {
    if(!(Test-Path -Path $($d.wD, $d.mR, "Certificates" -join '\'))) {
       New-Item $($d.wD, $d.mR, "Certificates" -join '\') -ItemType Container
    }
-   <#if($role -eq "Pull") {
+   if($role -eq "Pull") {
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.br)"
       Remove-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa*" -join '\') -Force
       Write-Log -value "Installing Certificate"
@@ -761,7 +748,7 @@ Function Install-Certs {
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -a -m `"pushing ssh keys`""
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
       Stop-Service Browser
-   }#>
+   }
    if($role -ne "Pull") {
       Copy-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa'
       Copy-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa.pub'
