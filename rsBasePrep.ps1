@@ -811,13 +811,14 @@ switch ($stage) {
    
    1
    {
+      Load-Globals
       Create-Log
       Write-Log -value "Starting Stage 1"
+      Check-RC
+      Load-Globals
       Disable-MSN
       Create-SshKey
       Get-TempPullDSC
-      Load-Globals
-      Check-RC
       Check-Managed
       Create-ClientData
       Set-GitPath
