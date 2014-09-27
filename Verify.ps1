@@ -140,7 +140,7 @@ Function Check-Hosts {
    $hostEntry = "`n${pullServerIP}`t${pullServerName}"
    $entryExist = ((Get-Content "${env:windir}\system32\drivers\etc\hosts") -match "^[^#]*\s+$pullServerName") 
    if($entryExist) {
-      $entryExist.Split()
+      $entryExist = $entryExist.Split()
       if(($entryExist[0]) -ne $pullServerIP) {
          Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Host file entry for pullserver does not match, updating hosts file"
          ((Get-Content "${env:windir}\system32\drivers\etc\hosts") -notmatch "^\s*$") -notmatch "^[^#]*\s+$pullServerName" | Set-Content "${env:windir}\system32\drivers\etc\hosts"
