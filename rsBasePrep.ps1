@@ -344,11 +344,8 @@ Function Set-GitPath {
    
 Function Install-TempDSC {
    if($role -eq "Pull") {
-      do {
          Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing inital temporary DSC configuration $($d.wD, $d.prov, "initDSC.ps1" -join '\')"
          Invoke-Command -ScriptBlock {Start -Wait -NoNewWindow PowerShell.exe $($d.wD, $d.prov, "initDSC.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
-      }
-      while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Temporary DSC intallation complete"
    }
 }
