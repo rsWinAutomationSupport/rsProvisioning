@@ -175,7 +175,7 @@ Function Install-Certs {
       powershell.exe certutil -addstore -f root $($d.wD, $d.mR, "Certificates\PullServer.crt" -join '\')
    }
    else {
-      if(!((Get-ChildItem Cert:\LocalMachine\Root\ | ? Subject -eq $cN).Thumbprint) -eq $((Get-PfxCertificate -FilePath $($d.wD,$d.mR,"Certificates\PullServer.crt" -join'\')).Thumbprint)) {
+      if(((Get-ChildItem Cert:\LocalMachine\Root\ | ? Subject -eq $cN).Thumbprint) -ne $((Get-PfxCertificate -FilePath $($d.wD,$d.mR,"Certificates\PullServer.crt" -join'\')).Thumbprint)) {
          Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Pullserver SSL does not match, Installing new SSL certificate."
          Get-ChildItem Cert:\LocalMachine\Root\ | where {$_.Subject -eq $cN} | Remove-Item
          powershell.exe certutil -addstore -f root $($d.wD, $d.mR, "Certificates\PullServer.crt" -join '\')
