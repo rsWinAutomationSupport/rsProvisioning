@@ -182,11 +182,11 @@ Function Check-RC {
       $uri = $(("https://", $currentRegion -join ''), ".api.rackconnect.rackspace.com/v1/automation_status?format=text" -join '')
       do {
          $rcStatus = Invoke-RestMethod -Uri $uri -Method GET -ContentType application/json
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "RackConnect status is: $rsStatus"
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "RackConnect status is: $rcStatus"
          Start-Sleep -Seconds 10
       }
       while ($rcStatus -ne "DEPLOYED")
-      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "RackConnect status is: $rsStatus"
+      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "RackConnect status is: $rcStatus"
    }
 }
 
