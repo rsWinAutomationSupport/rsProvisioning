@@ -181,13 +181,9 @@ Function Check-RC {
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "The server is Rackconnect and is in the default region"
       $uri = $(("https://", $currentRegion -join ''), ".api.rackconnect.rackspace.com/v1/automation_status?format=text" -join '')
       do {
-         Write-Host "Running"
-         try {
-            $rcStatus = Invoke-RestMethod -Uri $uri -Method GET -ContentType application/json
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "RackConnect status is: $rsStatus"
-         }
-         catch { $rsStatus = "FAILED" }
-         Start-Sleep -Seconds 30
+         $rcStatus = Invoke-RestMethod -Uri $uri -Method GET -ContentType application/json
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "RackConnect status is: $rsStatus"
+         Start-Sleep -Seconds 10
       }
       while ($rcStatus -ne "DEPLOYED")
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "RackConnect status is: $rsStatus"
@@ -320,7 +316,15 @@ Function Create-PullServerInfo {
       Add-Content -Path $path -Value "`"defaultRegion`" = `"$defaultRegion`""
       Add-Content -Path $path -Value "}"
       Start-Service Browser
-      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD + "\" + $d.mR + "\" + "PullServerInfo.ps1")"
+      $trackedFiles = @()
+      $fileNames = (Get-Item -Path $($d.wD, $d.mR, "Certificates", '*' -join '\')).Name
+      foreach($fileName in $fileNames) {
+         $trackedFiles += $($d.wD, $d.mR, "Certificates", $fileName -join '\')
+      }
+      $trackedFiles += $($d.wD, $d.mR, "PullServerInfo.ps1" -join '\')
+      foreach($trackedFile in $trackedFiles) {
+         Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $trackedFile"
+      }
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -a -m `"$pullServerName pushing PullServerInfo.ps1`""
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.br)"
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
@@ -341,12 +345,7 @@ Function Set-GitPath {
 Function Install-TempDSC {
    if($role -eq "Pull") {
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing inital temporary DSC configuration $($d.wD, $d.prov, "initDSC.ps1" -join '\')"
-      Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.prov, "initDSC.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
-      #do {
-      #   Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for temporary DSC intallation to complete, rechecking in 5 seconds"
-      #   Start-Sleep -Seconds 5
-      #}
-      #while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
+      Invoke-Command -ScriptBlock {Start -Wait -NoNewWindow PowerShell.exe $($d.wD, $d.prov, "initDSC.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Temporary DSC intallation complete"
    }
 }
@@ -393,18 +392,18 @@ Function Get-TempPullDSC {
          }
          try {
             chdir $($d.wD)
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning $(("git@github.com:", $d.gCA -join ''), $($($d.mR), ".git" -join '') -join '/')"
-            Start -Wait $gitExe -ArgumentList "clone  $(("git@github.com:", $d.gCA -join ''), $($($d.mR), ".git" -join '') -join '/')"
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning $(("git@github.com:", $d.gCA -join ''), ($($d.mR), ".git" -join '') -join '/')"
+            Start -Wait $gitExe -ArgumentList "clone  $((('git@github.com:', $($d.gCA) -join ''), ($($d.mR), '.git' -join '')) -join '/')"
             if(Test-Path -Path $($d.wD, $($d.mR) -join '\')) {
                $isDone = $true
             }
             else {
-               Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone $(("git@github.com:", $d.gCA -join ''), $($($d.mR), ".git" -join '') -join '/'), sleeping for 5 seconds then trying again. `n $($_.Exception.Message)"
+               Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone $(("git@github.com:", $d.gCA -join ''), ($($d.mR), ".git" -join '') -join '/'), sleeping for 5 seconds then trying again. `n $($_.Exception.Message)"
                $timeOut += 1
             }
          }
          catch {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone $(("git@github.com:", $d.gCA -join ''), $($($d.mR), ".git" -join '') -join '/'), sleeping for 5 seconds then trying again. `n $($_.Exception.Message)"
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone $(("git@github.com:", $d.gCA -join ''), ($($d.mR), ".git" -join '') -join '/'), sleeping for 5 seconds then trying again. `n $($_.Exception.Message)"
             $timeOut += 1
             Start-Sleep -Seconds 5
          }
@@ -427,7 +426,7 @@ Function Get-TempPullDSC {
          try {
             chdir $($d.wD)
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning $($d.mR , ".git" -join '') $((("https://", "##REDACTED_GITHUB_APIKEY##", "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/')"
-            Start -Wait $gitExe -ArgumentList "clone  $((("https://", $d.gAPI, "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/') "
+            Start -Wait $gitExe -ArgumentList "clone  $((("https://", $d.gAPI, "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/')"
             if(Test-Path -Path $($d.wD, $($d.mR) -join '\')) {
                $isDone = $true
             }
@@ -446,17 +445,25 @@ Function Get-TempPullDSC {
 #                                             Function - Install DSC (all nodes)
 ##################################################################################################################################
 Function Install-DSC {
-   if(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof") {
-      Remove-Item -Path "C:\Windows\System32\Configuration\Current.mof" -Force
-   }
    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing LCM"
-   Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.prov, "rsLCM.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+   Invoke-Command -ScriptBlock { Start -Wait -NoNewWindow PowerShell.exe $($d.wD, $d.prov, "rsLCM.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
    ### Insall LCM on Current server
    do {
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for LCM installation to complete, sleeping 5 seconds"
       Start-Sleep -Seconds 5
    }
    while(!(Test-Path -Path "C:\Windows\System32\Configuration\MetaConfig.mof"))
+   if($role -ne "Pull") {
+      $i = 0
+      do {
+         if($i -gt 5) {
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for Client to install DSC configuration"
+            $i = 0
+         }
+         $i ++
+      }
+      while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
+   }
    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "LCM installation complete"
    ### Pullserver specific tasks, install WindowsFeature Web-Service, install SSL certificates then run rsEnvironments.ps1 to install DSC
    if($role -eq "Pull") {
@@ -480,13 +487,12 @@ Function Install-DSC {
       if(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof") {
          Remove-Item -Path "C:\Windows\System32\Configuration\Current.mof" -Force
       }
-      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing DSC $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')"
-      Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
-      <#do {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for PullServer DSC installation, sleeping 15 seconds"
-         Start-Sleep -Seconds 15
+      do {
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing DSC $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')"
+         taskkill /F /IM WmiPrvSE.exe
+         Invoke-Command -ScriptBlock { start -Wait -NoNewWindow PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
       }
-      while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))#>
+      while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "PullServer DSC installation Complete."
    }
    return
@@ -734,24 +740,20 @@ Function Update-HostFile {
 #                                             Function - Install SSL cert used for Client/Pull communications
 ##################################################################################################################################
 Function Install-Certs {
-   chdir $($d.wD, $d.mR -join '/')
-   Start-Service Browser
-   Start -Wait $gitExe pull
-   Stop-Service Browser
    if(!(Test-Path -Path $($d.wD, $d.mR, "Certificates" -join '\'))) {
       New-Item $($d.wD, $d.mR, "Certificates" -join '\') -ItemType Container
    }
    if($role -eq "Pull") {
+      Start-Service Browser
+      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.br)"
       Remove-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa*" -join '\') -Force
       Write-Log -value "Installing Certificate"
       Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa" -Destination $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\') -Force
       Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa.pub" -Destination $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\') -Force
       chdir $($d.wD, $d.mR -join '\')
-      Start-Service Browser
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\')"
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\')"
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -a -m `"pushing ssh keys`""
-      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.br)"
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
       Stop-Service Browser
    }
@@ -804,16 +806,18 @@ switch ($stage) {
    
    1
    {
+      Load-Globals
       Create-Log
       Write-Log -value "Starting Stage 1"
+      Check-RC
+      Check-Managed
+      Load-Globals
       Disable-MSN
+      Set-GitPath
       Create-SshKey
       Get-TempPullDSC
       Load-Globals
-      Check-RC
-      Check-Managed
       Create-ClientData
-      Set-GitPath
       Disable-TOE
       tzutil /s "Central Standard Time"
       Create-ScheduledTask

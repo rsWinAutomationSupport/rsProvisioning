@@ -51,23 +51,29 @@ Function Download-File {
 ### will pull before running rsEnvironments.ps1
 Function Check-Hash {
    Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Pulling current configurations from github"
-   chdir $($d.wD, $d.mR -join '\')
-   Start-Service Browser
-   Start -Wait git pull
-   Stop-Service Browser
    if((Test-Path $($d.wD, "rsEnvironments.hash" -join '\')) -eq $false) {
       Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "File $($d.wD, "rsEnvironments.hash" -join '\') was not found, creating hash file and executing rsEnvironments.ps1"
       Set-Content -Path $($d.wD, "rsEnvironments.hash" -join '\') -Value (Get-FileHash -Path $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')).hash
-      taskkill /F /IM WmiPrvSE.exe
-      Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+      do {
+         Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Installing DSC $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')"
+         taskkill /F /IM WmiPrvSE.exe
+         Invoke-Command -ScriptBlock { start -Wait -NoNewWindow PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+      }
+      while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
+      Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "PullServer DSC installation Complete."
    }
    $checkHash = Get-FileHash $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')
    $currentHash = Get-Content $($d.wD, "rsEnvironments.hash" -join '\')
    if($checkHash.Hash -ne $currentHash) {
       Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "rsEnvironments hash mismatch rsEnvironments has been updated, executing rsEnvironments.ps1"
       Set-Content -Path $($d.wD, "rsEnvironments.hash" -join '\') -Value (Get-FileHash -Path $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')).hash
-      taskkill /F /IM WmiPrvSE.exe
-      Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+      do {
+         Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Installing DSC $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')"
+         taskkill /F /IM WmiPrvSE.exe
+         Invoke-Command -ScriptBlock { start -Wait -NoNewWindow PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+      }
+      while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
+      Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "PullServer DSC installation Complete."
       $pullServerName = $env:COMPUTERNAME
       $pullServerPrivateIP = (Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -match '^10\.').IPAddress
       $pullServerPublicIp = Get-AccessIPv4
@@ -77,7 +83,15 @@ Function Check-Hash {
       }
       $region = Get-Region
       chdir $($d.wD, $d.mR -join '\')
+      Set-Service Browser -startuptype "manual"
+      Start-Service Browser
       Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Updating pullserverInfo.ps1 and pushing to github"
+      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.br)"
+      Remove-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa*" -join '\') -Force
+      Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa" -Destination $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\') -Force
+      Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa.pub" -Destination $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\') -Force
+      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\')"
+      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\')"
       New-Item -path $path -ItemType file
       Add-Content -Path $path -Value "`$pullServerInfo = @{"
       Add-Content -Path $path -Value "`"pullServerName`" = `"$pullServerName`""
@@ -88,15 +102,22 @@ Function Check-Hash {
       Add-Content -Path $path -Value "`"isManaged`" = `$$($isManaged.toString().toLower())"
       Add-Content -Path $path -Value "`"defaultRegion`" = `"$defaultRegion`""
       Add-Content -Path $path -Value "}"
-      Set-Service Browser -startuptype "manual"
-      Start-Service Browser
       Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD + "\" + $d.mR + "\" + "PullServerInfo.ps1")"
-      Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -am `"$pullServerName pushing PullServerInfo.ps1`""
-      Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.br)"
+      Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -am `"$pullServerName sshkey and pullserverinfo`""
       Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
       Stop-Service Browser
    }  
    if($checkHash.Hash -eq $currentHash) {
+      if(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof")) {
+         Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "rsEnvironments hash matches, but Current.mof does not exist, running rsEnvironments.ps1"
+         do {
+            Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Installing DSC $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')"
+            taskkill /F /IM WmiPrvSE.exe
+            Invoke-Command -ScriptBlock { start -Wait -NoNewWindow PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+         }
+         while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
+         Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "PullServer DSC installation Complete."
+      }
       Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "rsEnvironments hash matches, no changes have been made to rsEnvironments, executing consistency check"
       Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
    }
@@ -104,10 +125,6 @@ Function Check-Hash {
 ### Client tasks
 Function Check-Hosts {
    Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Pulling current configurations from github"
-   chdir $($d.wD, $d.mR -join '\')
-   Start-Service Browser
-   Start -Wait git pull
-   Stop-Service Browser
    Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Checking hosts file entry for pullserver"
    $serverRegion = Get-Region
    $pullServerRegion = $pullServerInfo.region
@@ -123,7 +140,7 @@ Function Check-Hosts {
    $hostEntry = "`n${pullServerIP}`t${pullServerName}"
    $entryExist = ((Get-Content "${env:windir}\system32\drivers\etc\hosts") -match "^[^#]*\s+$pullServerName") 
    if($entryExist) {
-      $entryExist.Split()
+      $entryExist = $entryExist.Split()
       if(($entryExist[0]) -ne $pullServerIP) {
          Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Host file entry for pullserver does not match, updating hosts file"
          ((Get-Content "${env:windir}\system32\drivers\etc\hosts") -notmatch "^\s*$") -notmatch "^[^#]*\s+$pullServerName" | Set-Content "${env:windir}\system32\drivers\etc\hosts"
@@ -138,13 +155,13 @@ Function Check-Hosts {
       Add-Content -Path "${env:windir}\system32\drivers\etc\hosts" -Value $hostEntry -Force -Encoding ASCII
    }
 }
-taskkill /F /IM WmiPrvSE.exe
+
 Function Install-Certs {
+   $pullServerName = $pullServerInfo.pullServerName
    Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Checking github SSH Key."
    if(!((Get-Content (Join-Path "C:\DevOps\DDI_rsConfigs\Certificates" -ChildPath "id_rsa.pub")).Split("==")[0] + "==") -eq ((Get-Content -Path (Join-Path "C:\Program Files (x86)\Git\.ssh" -ChildPath "id_rsa.pub")).Split("==")[0] + "==")) {
       Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "SSH Key does not match, installing new SSH Key."
       Remove-Item -Path 'C:\Program Files (x86)\Git\.ssh\id_rsa*'
-      Get-ChildItem Cert:\LocalMachine\Root\ | where {$_.Subject -eq $cN} | Remove-Item
       Copy-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa'
       Copy-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa.pub'
    }
@@ -152,14 +169,15 @@ Function Install-Certs {
       Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "SSH Key matches."
    }
    Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Checking pullserver certificate."
-   $cN = "CN=" + $env:COMPUTERNAME
-   if(!(Get-ChildItem Cert:\LocalMachine\Root\ | ? Subject -eq $cN)) {
+   $cN = "CN=" + $pullServerName
+   if((Get-ChildItem Cert:\LocalMachine\Root\ | ? Subject -eq $cN).count -lt 1) {
       Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "No Pullserver SSL certificate installed in trusted root, Installing new SSL certificate."
       powershell.exe certutil -addstore -f root $($d.wD, $d.mR, "Certificates\PullServer.crt" -join '\')
    }
    else {
-      if(!((Get-ChildItem Cert:\LocalMachine\Root\ | ? Subject -eq $cN).Thumbprint) -eq $((Get-PfxCertificate -FilePath $($d.wD,$d.mR,"Certificates\PullServer.crt" -join'\')).Thumbprint)) {
+      if(((Get-ChildItem Cert:\LocalMachine\Root\ | ? Subject -eq $cN).Thumbprint) -ne $((Get-PfxCertificate -FilePath $($d.wD,$d.mR,"Certificates\PullServer.crt" -join'\')).Thumbprint)) {
          Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Pullserver SSL does not match, Installing new SSL certificate."
+         Get-ChildItem Cert:\LocalMachine\Root\ | where {$_.Subject -eq $cN} | Remove-Item
          powershell.exe certutil -addstore -f root $($d.wD, $d.mR, "Certificates\PullServer.crt" -join '\')
       }
       else {
@@ -172,6 +190,17 @@ Function Install-Certs {
    Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
 }
 $role = Get-Role
+   chdir $($d.wD, $d.mR -join '\')
+   Start-Service Browser
+   Start -Wait git pull
+   Remove-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa*" -join '\') -Force
+   Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa" -Destination $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\') -Force
+   Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa.pub" -Destination $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\') -Force
+   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\')"
+   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\')"
+   Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -am `"$pullServerName sshkey`""
+   Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
+   Stop-Service Browser
 if($role -eq "Pull") {
    $Global:catalog = Get-ServiceCatalog
    $Global:AuthToken = @{"X-Auth-Token"=($catalog.access.token.id)}
