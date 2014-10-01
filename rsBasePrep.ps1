@@ -809,14 +809,13 @@ switch ($stage) {
       Load-Globals
       Create-Log
       Write-Log -value "Starting Stage 1"
-      Check-RC
-      Check-Managed
-      Load-Globals
       Disable-MSN
       Set-GitPath
       Create-SshKey
       Get-TempPullDSC
       Load-Globals
+      Check-RC
+      Check-Managed
       Create-ClientData
       Disable-TOE
       tzutil /s "Central Standard Time"
