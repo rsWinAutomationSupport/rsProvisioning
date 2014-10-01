@@ -342,11 +342,11 @@ Function Install-TempDSC {
    if($role -eq "Pull") {
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing inital temporary DSC configuration $($d.wD, $d.prov, "initDSC.ps1" -join '\')"
       Invoke-Command -ScriptBlock { PowerShell.exe $($d.wD, $d.prov, "initDSC.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
-      do {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for temporary DSC intallation to complete, rechecking in 5 seconds"
-         Start-Sleep -Seconds 5
-      }
-      while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
+      #do {
+      #   Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for temporary DSC intallation to complete, rechecking in 5 seconds"
+      #   Start-Sleep -Seconds 5
+      #}
+      #while(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Temporary DSC intallation complete"
    }
 }
