@@ -62,11 +62,16 @@ Configuration PullServerLCM
         chdir "C:\Windows\Temp"
         $pullServerName = $pullServerInfo.pullServerName
         $pullServerUri = "https://" + $pullServerName + ":8080/PSDSCPullServer.svc"
+        Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.br)"
+
         if (!(Test-Path -Path $($d.wD, $d.mR, "Certificates", "Credentials" -join '\')))
         {
             New-Item -Path $($d.wD, $d.mR, "Certificates", "Credentials" -join '\') -ItemType directory
         }
         powershell.exe $($d.wD, $d.prov, "makecert.exe" -join '\') -r -pe -n $cN -sky exchange -ss my $($d.wD, $d.mR, "Certificates\Credentials","$ObjectGuid.cer"  -join '\'), -sr localmachine, -len 2048
+        Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certificates\Credentials","$ObjectGuid.cer"  -join '\')"
+        Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -a -m `"pushing $ObjectGuid.crt`""
+        Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
         ClientLCM -Node $Node -pullServerUri $pullServerUri -ObjectGuid $ObjectGuid -OutputPath "C:\Windows\Temp"
         Set-DscLocalConfigurationManager -Path "C:\Windows\Temp" -Verbose
         Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
