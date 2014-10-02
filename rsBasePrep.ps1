@@ -447,7 +447,7 @@ Function Get-TempPullDSC {
 Function Install-DSC {
    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing LCM"
    Invoke-Command -ScriptBlock { Start -Wait -NoNewWindow PowerShell.exe $($d.wD, $d.prov, "rsLCM.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
-   ### Insall LCM on Current server
+   ### Install LCM on Current server
    do {
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for LCM installation to complete, sleeping 5 seconds"
       Start-Sleep -Seconds 5
@@ -460,7 +460,8 @@ Function Install-DSC {
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for Client to install DSC configuration"
             $i = 0
          }
-         $i ++
+         $i++
+         Start-Sleep -Seconds 10
       }
       while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
    }
