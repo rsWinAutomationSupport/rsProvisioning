@@ -59,9 +59,7 @@ Configuration PullServerLCM
     else {
         $Node = $env:COMPUTERNAME
         $cN = "CN=" + $NodeName
-        chdir "C:\Windows\Temp"
-        $pullServerName = $pullServerInfo.pullServerName
-        $pullServerUri = "https://" + $pullServerName + ":8080/PSDSCPullServer.svc"
+        Set-Location -Path ($d.wD, $d.mR -join "\"
         Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.br)"
 
         if (!(Test-Path -Path $($d.wD, $d.mR, "Certificates", "Credentials" -join '\')))
@@ -72,6 +70,9 @@ Configuration PullServerLCM
         Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certificates\Credentials","$ObjectGuid.cer"  -join '\')"
         Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -a -m `"pushing $ObjectGuid.crt`""
         Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
+        chdir "C:\Windows\Temp"
+        $pullServerName = $pullServerInfo.pullServerName
+        $pullServerUri = "https://" + $pullServerName + ":8080/PSDSCPullServer.svc"
         ClientLCM -Node $Node -pullServerUri $pullServerUri -ObjectGuid $ObjectGuid -OutputPath "C:\Windows\Temp"
         Set-DscLocalConfigurationManager -Path "C:\Windows\Temp" -Verbose
         Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
