@@ -456,6 +456,9 @@ Function Install-DSC {
    if($role -ne "Pull") {
       $i = 0
       do {
+         if ( $((Get-WinEvent Microsoft-Windows-DSC/Operational | Select -First 1).id) -eq "4194" ) {
+             Start-ScheduledTask -TaskName "Consistency"
+         }
          if($i -gt 5) {
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for Client to install DSC configuration"
             $i = 0
