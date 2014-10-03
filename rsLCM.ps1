@@ -58,8 +58,8 @@ Configuration PullServerLCM
     }
     else {
         $Node = $env:COMPUTERNAME
-        $cN = "CN=" + $NodeName
-        Set-Location -Path ($d.wD, $d.mR -join "\"
+        $cN = "CN=" + $Node
+        Set-Location -Path ($d.wD, $d.mR -join "\")
         Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.br)"
 
         if (!(Test-Path -Path $($d.wD, $d.mR, "Certificates", "Credentials" -join '\')))
