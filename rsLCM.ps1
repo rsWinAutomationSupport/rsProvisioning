@@ -2,7 +2,7 @@
 
 Configuration ClientLCM
 {
-    param ($Node, $pullServerUri, $ObjectGuid)
+    param ($Node, $pullServerUri, $ObjectGuid, $CertificateID)
 
     Node $Node
     {
@@ -10,6 +10,7 @@ Configuration ClientLCM
         {
             AllowModuleOverwrite = 'True'
             ConfigurationID = $ObjectGuid
+            CertificateID = $CertificateID
             ConfigurationModeFrequencyMins = 30
             ConfigurationMode = 'ApplyAndAutoCorrect'
             RebootNodeIfNeeded = 'True'
@@ -58,7 +59,7 @@ Configuration PullServerLCM
     }
     else {
         $Node = $env:COMPUTERNAME
-        $cN = "CN=" + $Node
+        $cN = "CN=" + $Node + "_enc"
         Set-Location -Path ($d.wD, $d.mR -join "\")
         Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.br)"
 
@@ -73,7 +74,8 @@ Configuration PullServerLCM
         chdir "C:\Windows\Temp"
         $pullServerName = $pullServerInfo.pullServerName
         $pullServerUri = "https://" + $pullServerName + ":8080/PSDSCPullServer.svc"
-        ClientLCM -Node $Node -pullServerUri $pullServerUri -ObjectGuid $ObjectGuid -OutputPath "C:\Windows\Temp"
+        $certThumbPrint = (Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.PrivateKey.KeySize -eq 2048 -and $_.Subject -eq $cN}).Thumbprint
+        ClientLCM -Node $Node -pullServerUri $pullServerUri -ObjectGuid $ObjectGuid -CertificateID $certThumbPrint -OutputPath "C:\Windows\Temp"
         Set-DscLocalConfigurationManager -Path "C:\Windows\Temp" -Verbose
         Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
         $result = Get-DscLocalConfigurationManager | ConvertTo-Json -Depth 4
