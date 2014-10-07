@@ -182,11 +182,11 @@ Function Check-RC {
       $uri = $(("https://", $currentRegion -join ''), ".api.rackconnect.rackspace.com/v1/automation_status?format=text" -join '')
       do {
          $rcStatus = Invoke-RestMethod -Uri $uri -Method GET -ContentType application/json
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "RackConnect status is: $rsStatus"
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "RackConnect status is: $rcStatus"
          Start-Sleep -Seconds 10
       }
       while ($rcStatus -ne "DEPLOYED")
-      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "RackConnect status is: $rsStatus"
+      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "RackConnect status is: $rcStatus"
    }
 }
 
@@ -447,7 +447,7 @@ Function Get-TempPullDSC {
 Function Install-DSC {
    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing LCM"
    Invoke-Command -ScriptBlock { Start -Wait -NoNewWindow PowerShell.exe $($d.wD, $d.prov, "rsLCM.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
-   ### Insall LCM on Current server
+   ### Install LCM on Current server
    do {
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for LCM installation to complete, sleeping 5 seconds"
       Start-Sleep -Seconds 5
@@ -456,11 +456,15 @@ Function Install-DSC {
    if($role -ne "Pull") {
       $i = 0
       do {
+         if ( $((Get-WinEvent Microsoft-Windows-DSC/Operational | Select -First 1).id) -eq "4104" ) {
+             Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
+         }
          if($i -gt 5) {
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for Client to install DSC configuration"
             $i = 0
          }
-         $i ++
+         $i++
+         Start-Sleep -Seconds 10
       }
       while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
    }
