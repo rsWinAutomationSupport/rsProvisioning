@@ -192,7 +192,7 @@ Function Install-Certs {
 
 Function Remove-UnsedCerts {
    $serversURL = ($catalog.access.serviceCatalog | Where-Object { $_.Name -eq "cloudServersOpenStack" }).endpoints.publicURL
-   $activeServers = Invoke-RestMethod -Uri $serversURL -Headers $AuthToken
+   $activeServers = Invoke-RestMethod -Uri "$serversURL/servers" -Headers $AuthToken
    $certs = (Get-ChildItem $($d.wD, $d.mR, "Certificates\Credentials\*cer" -join '\')).Name | ForEach-Object { $_.Split(".")[0]}
    $unaccountedCerts =  $certs | Where-Object { -not ($serv.servers.id -contains $_)}
    forEach ($cert in $unaccountedCerts) {
