@@ -189,8 +189,22 @@ Function Install-Certs {
    taskkill /F /IM WmiPrvSE.exe
    Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
 }
+
+Function Remove-UnsedCerts {
+   $serversURL = ($catalog.access.serviceCatalog | Where-Object { $_.Name -eq "cloudServersOpenStack" }).endpoints.publicURL
+   $activeServers = Invoke-RestMethod -Uri $serversURL -Headers $AuthToken
+   $certs = (Get-ChildItem $($d.wD, $d.mR, "Certificates\Credentials\*cer" -join '\')).Name | ForEach-Object { $_.Split(".")[0]}
+   $unaccountedCerts =  $certs | Where-Object { -not ($serv.servers.id -contains $_)}
+   forEach ($cert in $unaccountedCerts) {
+      Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "rm Certificates\Credentials\$cert.cer"
+   }
+}
+
 $role = Get-Role
+if($role -eq "Pull") {
+
    chdir $($d.wD, $d.mR -join '\')
+   Remove-UnsedCerts
    Start-Service Browser
    Start -Wait git pull
    Remove-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa*" -join '\') -Force
@@ -201,7 +215,7 @@ $role = Get-Role
    Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -am `"$pullServerName sshkey`""
    Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
    Stop-Service Browser
-if($role -eq "Pull") {
+
    $Global:catalog = Get-ServiceCatalog
    $Global:AuthToken = @{"X-Auth-Token"=($catalog.access.token.id)}
    $Global:defaultRegion = $catalog.access.user.'RAX-AUTH:defaultRegion'
