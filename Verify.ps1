@@ -195,9 +195,12 @@ Function Remove-UnsedCerts {
    $activeServers = Invoke-RestMethod -Uri "$serversURL/servers" -Headers $AuthToken
    $certs = (Get-ChildItem $($d.wD, $d.mR, "Certificates\Credentials\*cer" -join '\')).Name | ForEach-Object { $_.Split(".")[0]}
    $unaccountedCerts =  $certs | Where-Object { -not ($serv.servers.id -contains $_)}
+   "="*60 >> C:\cloud-automation\out.txt
+   $certs -join ", " >> C:\cloud-automation\out.txt
+   $unaccountedCerts -join ", " >> C:\cloud-automation\out.txt
    forEach ($cert in $unaccountedCerts) {
-      #"git rm Certificates\Credentials\$cert.cer" >> c:\cloud-automation\out.txt
-      Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "rm Certificates\Credentials\$cert.cer"
+      "git rm Certificates\Credentials\$cert.cer" >> c:\cloud-automation\out.txt
+      #Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "rm Certificates\Credentials\$cert.cer"
    }
 }
 
