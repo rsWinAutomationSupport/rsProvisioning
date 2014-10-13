@@ -1,7 +1,7 @@
 rsProvisioning
 ==============
 
-Current Production Release = v1.0.0
+Current Production Release = v1.1.0
 
 Pass this release number into your Create-DSCPull spinup script.
 
