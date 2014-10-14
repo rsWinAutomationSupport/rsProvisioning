@@ -211,6 +211,8 @@ $role = Get-Role
 if($role -eq "Pull") {
 
    chdir $($d.wD, $d.mR -join '\')
+   $Global:catalog = Get-ServiceCatalog
+   $Global:AuthToken = @{"X-Auth-Token"=($catalog.access.token.id)}
    Remove-UnsedCerts
    Start-Service Browser
    Start -Wait git pull
@@ -223,8 +225,6 @@ if($role -eq "Pull") {
    Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
    Stop-Service Browser
 
-   $Global:catalog = Get-ServiceCatalog
-   $Global:AuthToken = @{"X-Auth-Token"=($catalog.access.token.id)}
    $Global:defaultRegion = $catalog.access.user.'RAX-AUTH:defaultRegion'
    if(($catalog.access.user.roles | ? name -eq "rack_connect").id.count -gt 0) { $Global:isRackConnect = $true } else { $Global:isRackConnect = $false } 
    if(($catalog.access.user.roles | ? name -eq "rax_managed").id.count -gt 0) { $Global:isManaged = $true } else { $Global:isManaged = $false } 
