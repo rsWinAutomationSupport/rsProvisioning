@@ -1,5 +1,8 @@
-﻿. "C:\cloud-automation\secrets.ps1"
+﻿Import-Module rsCommon
+. (Get-rsSecrets)
 . "$($d.wD, $d.mR, "PullServerInfo.ps1" -join '\')"
+New-rsEventLogSource -logSource verify
+
 try {
    $basePrepState = (Get-ScheduledTask -TaskName "BasePrep" -ErrorAction SilentlyContinue).State
 }
@@ -19,35 +22,6 @@ if((Test-Path -Path "C:\Windows\System32\Configuration\Pending.mof") -and ((Get-
 ## This script is executed by the PullServerDSC scheduled task
 ## This script will check the hash value of the PullServerDSC.ps1 config script and if it has been modified it will create a new Hash and execute the PullServerDSC.ps1 script
 ## to start a new DSC configuration on the PullServer
-Function Get-ServiceCatalog {
-   return (Invoke-RestMethod -Uri $("https://identity.api.rackspacecloud.com/v2.0/tokens") -Method POST -Body $(@{"auth" = @{"RAX-KSKEY:apiKeyCredentials" = @{"username" = $($d.cU); "apiKey" = $($d.cAPI)}}} | convertTo-Json) -ContentType application/json)
-}
-Function Get-Region {
-   $base = gwmi -n root\wmi -cl CitrixXenStoreBase
-   $sid = $base.AddSession("MyNewSession")
-   $session = gwmi -n root\wmi -q "select * from CitrixXenStoreSession where SessionId=$($sid.SessionId)"
-   $region = $session.GetValue("vm-data/provider_data/region").value -replace "`"", ""
-   return $region
-}
-Function Get-Role {
-   $base = gwmi -n root\wmi -cl CitrixXenStoreBase
-   $sid = $base.AddSession("MyNewSession")
-   $session = gwmi -n root\wmi -q "select * from CitrixXenStoreSession where SessionId=$($sid.SessionId)"
-   $role = $session.GetValue("vm-data/user-metadata/Role").value -replace "`"", ""
-   return $role
-}
-Function Get-AccessIPv4 {
-   $uri = (($catalog.access.serviceCatalog | ? name -eq "cloudServersOpenStack").endpoints | ? region -eq $(Get-Region)).publicURL
-   $accessIPv4 = (((Invoke-RestMethod -Uri $($uri + "/servers/detail") -Method GET -Headers $AuthToken -ContentType application/json).servers) | ? { $_.name -eq $env:COMPUTERNAME}).accessIPv4
-   return $accessIPv4
-}
-Function Download-File {
-   # File download function
-   param ( [string]$url, [string]$path )
-   $webclient = New-Object System.Net.WebClient
-   $webclient.DownloadFile($url,$path)
-   return
-}
 ### will pull before running rsEnvironments.ps1
 Function Check-Hash {
    Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Pulling current configurations from github"
@@ -74,14 +48,14 @@ Function Check-Hash {
       }
       while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
       Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "PullServer DSC installation Complete."
-      $pullServerName = $env:COMPUTERNAME
+      <#$pullServerName = $env:COMPUTERNAME
       $pullServerPrivateIP = (Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -match '^10\.').IPAddress
-      $pullServerPublicIp = Get-AccessIPv4
+      $pullServerPublicIp = Get-rsAccessIPv4
       $path = $($d.wD, $d.mR, "PullServerInfo.ps1" -join '\')
       if(Test-Path -Path $path) {
          Remove-Item -Path $path -Force
       }
-      $region = Get-Region
+      $region = Get-rsRegion -Value $env:COMPUTERNAME
       chdir $($d.wD, $d.mR -join '\')
       Set-Service Browser -startuptype "manual"
       Start-Service Browser
@@ -105,7 +79,7 @@ Function Check-Hash {
       Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD + "\" + $d.mR + "\" + "PullServerInfo.ps1")"
       Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -am `"$pullServerName sshkey and pullserverinfo`""
       Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
-      Stop-Service Browser
+      Stop-Service Browser#>
    }  
    if($checkHash.Hash -eq $currentHash) {
       if(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof")) {
@@ -126,7 +100,7 @@ Function Check-Hash {
 Function Check-Hosts {
    Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Pulling current configurations from github"
    Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Checking hosts file entry for pullserver"
-   $serverRegion = Get-Region
+   $serverRegion = Get-rsRegion -Value $env:COMPUTERNAME
    $pullServerRegion = $pullServerInfo.region
    $pullServerName = $pullServerInfo.pullServerName
    $pullServerPublicIP = $pullserverInfo.pullserverPublicIp
@@ -190,6 +164,7 @@ Function Install-Certs {
    Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
 }
 
+
 Function Remove-UnsedCerts {
    $serversURL = ($catalog.access.serviceCatalog | Where-Object { $_.Name -eq "cloudServersOpenStack" }).endpoints.publicURL
    $activeServers = Invoke-RestMethod -Uri "$serversURL/servers" -Headers $AuthToken
@@ -207,27 +182,19 @@ Function Remove-UnsedCerts {
    }
 }
 
-$role = Get-Role
-if($role -eq "Pull") {
-
-   chdir $($d.wD, $d.mR -join '\')
-   $Global:catalog = Get-ServiceCatalog
-   $Global:AuthToken = @{"X-Auth-Token"=($catalog.access.token.id)}
-   Remove-UnsedCerts
-   Start-Service Browser
-   Start -Wait git pull
-   Remove-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa*" -join '\') -Force
-   Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa" -Destination $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\') -Force
-   Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa.pub" -Destination $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\') -Force
-   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\')"
-   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\')"
-   Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -am `"$pullServerName sshkey`""
-   Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
-   Stop-Service Browser
-
-   $Global:defaultRegion = $catalog.access.user.'RAX-AUTH:defaultRegion'
-   if(($catalog.access.user.roles | ? name -eq "rack_connect").id.count -gt 0) { $Global:isRackConnect = $true } else { $Global:isRackConnect = $false } 
-   if(($catalog.access.user.roles | ? name -eq "rax_managed").id.count -gt 0) { $Global:isManaged = $true } else { $Global:isManaged = $false } 
+if((Get-rsRole -Value $env:COMPUTERNAME) -eq "pull") {
+   $Global:catalog = Get-rsServiceCatalog
+   $Global:AuthToken = Get-rsAuthToken
+   if(Test-rsCloud) {
+      $Global:defaultRegion = $catalog.access.user.'RAX-AUTH:defaultRegion'
+      if(($catalog.access.user.roles | ? name -eq "rack_connect").id.count -gt 0) { $Global:isRackConnect = $true } else { $Global:isRackConnect = $false } 
+      if(($catalog.access.user.roles | ? name -eq "rax_managed").id.count -gt 0) { $Global:isManaged = $true } else { $Global:isManaged = $false } 
+   }
+   else {
+      $Global:defaultRegion = "NA"
+      $Global:isRackConnect = $false
+      $Global:isManaged = $false
+   }
    Check-Hash
 }
 else {
