@@ -1,6 +1,4 @@
-﻿. "C:\cloud-automation\secrets.ps1"
-
-configuration initDSC {
+﻿configuration initDSC {
    param (
       [string]$Ensure,
       [string]$Node
