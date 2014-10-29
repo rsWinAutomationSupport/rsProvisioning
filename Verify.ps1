@@ -163,17 +163,25 @@ Function Install-Certs {
    taskkill /F /IM WmiPrvSE.exe
    Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
 }
-   chdir $("C:\DevOps", $d.mR -join '\')
-   Start-Service Browser
-   Start -Wait git pull
-   Remove-Item -Path $("C:\DevOps", $d.mR, "Certificates\id_rsa*" -join '\') -Force
-   Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa" -Destination $("C:\DevOps", $d.mR, "Certificates\id_rsa.txt" -join '\') -Force
-   Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa.pub" -Destination $("C:\DevOps", $d.mR, "Certificates\id_rsa.pub" -join '\') -Force
-   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $("C:\DevOps", $d.mR, "Certificates\id_rsa.txt" -join '\')"
-   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $("C:\DevOps", $d.mR, "Certificates\id_rsa.pub" -join '\')"
-   Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -am `"$pullServerName sshkey`""
-   Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.branch_rsConfigs)"
-   Stop-Service Browser
+
+
+Function Remove-UnsedCerts {
+   $serversURL = ($catalog.access.serviceCatalog | Where-Object { $_.Name -eq "cloudServersOpenStack" }).endpoints.publicURL
+   $activeServers = Invoke-RestMethod -Uri "$serversURL/servers" -Headers $AuthToken
+   if ($activeServers) {
+      $certs = (Get-ChildItem $($d.wD, $d.mR, "Certificates\Credentials\*cer" -join '\')).Name | ForEach-Object { $_.Split(".")[0]}
+      $unaccountedCerts =  $certs | Where-Object { -not ($activeServers.servers.id -contains $_)}
+      "="*60 >> C:\cloud-automation\out.txt
+      $certs -join ", " >> C:\cloud-automation\out.txt
+      $unaccountedCerts -join ", " >> C:\cloud-automation\out.txt
+      forEach ($cert in $unaccountedCerts) {
+         "git rm Certificates\Credentials\$cert.cer" >> c:\cloud-automation\out.txt
+         Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "rm Certificates\Credentials\$cert.cer"
+      }
+
+   }
+}
+
 if((Get-rsRole -Value $env:COMPUTERNAME) -eq "pull") {
    $Global:catalog = Get-rsServiceCatalog
    $Global:AuthToken = Get-rsAuthToken
