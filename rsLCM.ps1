@@ -2,24 +2,24 @@
 
 Configuration ClientLCM
 {
-    param ($Node, $pullServerUri, $ObjectGuid, $CertificateID)
-
-    Node $Node
-    {
-        LocalConfigurationManager
-        {
-            AllowModuleOverwrite = 'True'
-            ConfigurationID = $ObjectGuid
-            CertificateID = $CertificateID
-            ConfigurationModeFrequencyMins = 30
-            ConfigurationMode = 'ApplyAndAutoCorrect'
-            RebootNodeIfNeeded = 'True'
-            RefreshMode = 'Pull'
-            RefreshFrequencyMins = 15
-            DownloadManagerName = 'WebDownloadManager'
-            DownloadManagerCustomData = (@{ServerUrl = $pullServerUri; AllowUnsecureConnection = "false"})
-        }
-    }
+   param ($Node, $pullServerUri, $ObjectGuid, $CertificateID)
+   
+   Node $Node
+   {
+      LocalConfigurationManager
+      {
+         AllowModuleOverwrite = 'True'
+         ConfigurationID = $ObjectGuid
+         CertificateID = $CertificateID
+         ConfigurationModeFrequencyMins = 30
+         ConfigurationMode = 'ApplyAndAutoCorrect'
+         RebootNodeIfNeeded = 'True'
+         RefreshMode = 'Pull'
+         RefreshFrequencyMins = 15
+         DownloadManagerName = 'WebDownloadManager'
+         DownloadManagerCustomData = (@{ServerUrl = $pullServerUri; AllowUnsecureConnection = "false"})
+      }
+   }
 }
 
 Configuration PullServerLCM
@@ -59,10 +59,23 @@ if((Get-rsRole -Value $env:COMPUTERNAME) -eq "pull") {
 }
 else {
    $Node = $env:COMPUTERNAME
+   $cN = "CN=" + $Node + "_enc"
+   Set-Location -Path ("C:\DevOps", $d.mR -join "\")
+   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.branch_rsConfigs)"
+   
+   if (!(Test-Path -Path $("C:\DevOps", $d.mR, "Certificates", "Credentials" -join '\')))
+   {
+      New-Item -Path $("C:\DevOps", $d.mR, "Certificates", "Credentials" -join '\') -ItemType directory
+   }
+   powershell.exe "C:\DevOps\rsProvisioning\makecert.exe" -r -pe -n $cN -sky exchange -ss my $("C:\DevOps", $d.mR, "Certificates\Credentials","$ObjectGuid.cer"  -join '\'), -sr localmachine, -len 2048
+   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $("C:\DevOps", $d.mR, "Certificates\Credentials","$ObjectGuid.cer"  -join '\')"
+   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -a -m `"pushing $ObjectGuid.crt`""
+   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.branch_rsConfigs)"
    chdir "C:\Windows\Temp"
-   $pullServerName = Get-rsPullServerName
+   $pullServerName = $pullServerInfo.pullServerName
    $pullServerUri = "https://" + $pullServerName + ":8080/PSDSCPullServer.svc"
-   ClientLCM -Node $Node -pullServerUri $pullServerUri -ObjectGuid $ObjectGuid -OutputPath "C:\Windows\Temp"
+   $certThumbPrint = (Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.PrivateKey.KeySize -eq 2048 -and $_.Subject -eq $cN}).Thumbprint
+   ClientLCM -Node $Node -pullServerUri $pullServerUri -ObjectGuid $ObjectGuid -CertificateID $certThumbPrint -OutputPath "C:\Windows\Temp"
    Set-DscLocalConfigurationManager -Path "C:\Windows\Temp" -Verbose
    Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
    $result = Get-DscLocalConfigurationManager | ConvertTo-Json -Depth 4
