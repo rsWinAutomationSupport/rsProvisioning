@@ -1,5 +1,4 @@
 ﻿Set-ExecutionPolicy -ExecutionPolicy Bypass -Force
-Import-Module rsCommon
 if([System.Diagnostics.EventLog]::SourceExists('BasePrep')) {
 }
 else {
@@ -22,6 +21,28 @@ Function Write-Log {
    $timeStamp = (get-date).ToString()
    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message ($timeStamp + ":`t" + $value)
    return
+}
+
+##################################################################################################################################
+#                                             Function - Create custom Event Log for DevOps Automation
+##################################################################################################################################
+<#Function Create-Log {
+   $logSources = @(
+    "BasePrep", "rsCommon", "LCM", "Verify", "PullServerDSC", "HostsFile", "rsIEEsc", "rsUAC", "RS_rsADDomain", "RS_rsADDomainController", "RS_rsADUser", "RS_rsCloudServersOpenStack", "RS_rsCluster", "RS_rsComputer",
+     "RS_rsDatabase", "RS_rsDBPackage", "RS_rsDNSServerAddress", "RS_rsFirewall", "RS_rsFTP", "RS_rsGit", "RS_rsGitSSHKey", "RS_rsIISAuth", "RS_rsIPAddress", "RS_rsPullServerMonitor", "RS_rsScheduledTask",
+      "RS_rsSmbShare", "RS_rsSMTP", "RS_rsSSHKnownHosts", "RS_rsWaitForADDomain", "RS_rsWaitForCluster", "RS_rsWebApplication", "RS_rsWebAppPool", "RS_rsWebConfigKeyValue", "RS_rsWebsite",
+      "RS_rsWebVirtualDirectory", "RS_rsWPI", "RS_rsCloudLoadBalancers", "RS_rsRaxMon", "RS_rsClientMofs"
+    )
+   if((Get-EventLog -List).Log -notcontains "DevOps") {
+      foreach($logSource in $logSources) {
+         New-EventLog -LogName "DevOps" -Source $logSource
+      }
+   }
+}#>
+
+Function Get-rsCommon {
+   cd "C:\Program Files\WindowsPowerShell\Modules"
+   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone --branch $($d.cBr) $('https://github.com', $($d.gCA), 'rsCommon.git' -join '/')"
 }
 
 Function Load-Globals {
@@ -587,6 +608,8 @@ switch ($stage) {
    1
    {
       Set-Service Browser -StartupType Manual
+      Get-rsCommon
+      Import-Module rsCommon
       Test-rsRackConnect
       Test-rsManaged
       Load-Globals
