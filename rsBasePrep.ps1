@@ -635,12 +635,14 @@ switch ($stage) {
    
    2
    {
+      Import-Module rsCommon
       Load-Globals
       Set-Stage -value 3
       Update-XenTools
    }
    3
    {
+      Import-Module rsCommon
       Load-Globals
       Disable-MSN
       Disable-TOE
@@ -657,6 +659,7 @@ switch ($stage) {
    }
    4
    {
+      Import-Module rsCommon
       Load-Globals
       Clean-Up
       Break
