@@ -189,8 +189,31 @@ Function Install-Certs {
    taskkill /F /IM WmiPrvSE.exe
    Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
 }
+
+Function Remove-UnsedCerts {
+   $serversURL = ($catalog.access.serviceCatalog | Where-Object { $_.Name -eq "cloudServersOpenStack" }).endpoints.publicURL
+   $activeServers = Invoke-RestMethod -Uri "$serversURL/servers" -Headers $AuthToken
+   if ($activeServers) {
+      $certs = (Get-ChildItem $($d.wD, $d.mR, "Certificates\Credentials\*cer" -join '\')).Name | ForEach-Object { $_.Split(".")[0]}
+      $unaccountedCerts =  $certs | Where-Object { -not ($activeServers.servers.id -contains $_)}
+      "="*60 >> C:\cloud-automation\out.txt
+      $certs -join ", " >> C:\cloud-automation\out.txt
+      $unaccountedCerts -join ", " >> C:\cloud-automation\out.txt
+      forEach ($cert in $unaccountedCerts) {
+         "git rm Certificates\Credentials\$cert.cer" >> c:\cloud-automation\out.txt
+         Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "rm Certificates\Credentials\$cert.cer"
+      }
+
+   }
+}
+
 $role = Get-Role
+if($role -eq "Pull") {
+
    chdir $($d.wD, $d.mR -join '\')
+   $Global:catalog = Get-ServiceCatalog
+   $Global:AuthToken = @{"X-Auth-Token"=($catalog.access.token.id)}
+   Remove-UnsedCerts
    Start-Service Browser
    Start -Wait git pull
    Remove-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa*" -join '\') -Force
@@ -201,9 +224,7 @@ $role = Get-Role
    Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -am `"$pullServerName sshkey`""
    Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
    Stop-Service Browser
-if($role -eq "Pull") {
-   $Global:catalog = Get-ServiceCatalog
-   $Global:AuthToken = @{"X-Auth-Token"=($catalog.access.token.id)}
+
    $Global:defaultRegion = $catalog.access.user.'RAX-AUTH:defaultRegion'
    if(($catalog.access.user.roles | ? name -eq "rack_connect").id.count -gt 0) { $Global:isRackConnect = $true } else { $Global:isRackConnect = $false } 
    if(($catalog.access.user.roles | ? name -eq "rax_managed").id.count -gt 0) { $Global:isManaged = $true } else { $Global:isManaged = $false } 
