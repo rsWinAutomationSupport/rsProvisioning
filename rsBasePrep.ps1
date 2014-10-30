@@ -1,5 +1,4 @@
 ﻿Set-ExecutionPolicy -ExecutionPolicy Bypass -Force
-Import-Module rsCommon
 if([System.Diagnostics.EventLog]::SourceExists('BasePrep')) {
 }
 else {
@@ -46,6 +45,11 @@ Function Write-Log {
       }
    }
 }#>
+
+Function Get-rsCommon {
+   cd "C:\Program Files\WindowsPowerShell\Modules"
+   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone --branch $($d.cBr) $('https://github.com', $($d.gCA), 'rsCommon.git' -join '/')"
+}
 
 Function Load-Globals {
    $Global:serverName = $env:COMPUTERNAME
@@ -639,7 +643,10 @@ switch ($stage) {
    1
    {
       Set-Service Browser -StartupType Manual
-      #Create-Log
+      Get-rsCommon
+      Import-Module rsCommon
+      Test-rsRackConnect
+      Test-rsManaged
       Load-Globals
       Write-Log -value "Starting Stage 1"
       Disable-MSN
@@ -651,8 +658,6 @@ switch ($stage) {
       Update-rsGitConfig -scope system -attribute user.name -value $env:COMPUTERNAME
       Get-TempPullDSC
       Load-Globals
-      Test-rsRackConnect
-      Test-rsManaged
       Create-ClientData
       Disable-TOE
       tzutil /s "Central Standard Time"
