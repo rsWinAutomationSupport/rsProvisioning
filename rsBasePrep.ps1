@@ -4,8 +4,8 @@ if([System.Diagnostics.EventLog]::SourceExists('BasePrep')) {
 else {
    New-EventLog -LogName "DevOps" -Source BasePrep
 }
+Import-Module rsCommon
 . (Get-rsSecrets)
-
 if(Test-Path -Path "C:\DevOps\dedicated.csv") {
    $DedicatedData = Import-Csv -Path "C:\DevOps\dedicated.csv"
 }
@@ -45,11 +45,6 @@ Function Write-Log {
       }
    }
 }#>
-
-Function Get-rsCommon {
-   cd "C:\Program Files\WindowsPowerShell\Modules"
-   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone --branch $($d.cBr) $('https://github.com', $($d.gCA), 'rsCommon.git' -join '/')"
-}
 
 Function Load-Globals {
    $Global:serverName = $env:COMPUTERNAME
@@ -643,8 +638,6 @@ switch ($stage) {
    1
    {
       Set-Service Browser -StartupType Manual
-      Get-rsCommon
-      Import-Module rsCommon
       Test-rsRackConnect
       Test-rsManaged
       Load-Globals
@@ -670,14 +663,12 @@ switch ($stage) {
    
    2
    {
-      Import-Module rsCommon
       Load-Globals
       Set-Stage -value 3
       Update-XenTools
    }
    3
    {
-      Import-Module rsCommon
       Load-Globals
       Disable-MSN
       Disable-TOE
@@ -694,7 +685,6 @@ switch ($stage) {
    }
    4
    {
-      Import-Module rsCommon
       Load-Globals
       Clean-Up
       Break
