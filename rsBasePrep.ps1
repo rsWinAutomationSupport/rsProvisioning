@@ -40,11 +40,6 @@ Function Write-Log {
    }
 }#>
 
-Function Get-rsCommon {
-   cd "C:\Program Files\WindowsPowerShell\Modules"
-   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone --branch $($d.cBr) $('https://github.com', $($d.gCA), 'rsCommon.git' -join '/')"
-}
-
 Function Load-Globals {
    if((Get-rsRole -Value $env:COMPUTERNAME) -eq "pull") {
       if(Test-rsCloud) {
@@ -608,8 +603,6 @@ switch ($stage) {
    1
    {
       Set-Service Browser -StartupType Manual
-      Get-rsCommon
-      Import-Module rsCommon
       Test-rsRackConnect
       Test-rsManaged
       Load-Globals
@@ -635,14 +628,12 @@ switch ($stage) {
    
    2
    {
-      Import-Module rsCommon
       Load-Globals
       Set-Stage -value 3
       Update-XenTools
    }
    3
    {
-      Import-Module rsCommon
       Load-Globals
       Disable-MSN
       Disable-TOE
@@ -659,7 +650,6 @@ switch ($stage) {
    }
    4
    {
-      Import-Module rsCommon
       Load-Globals
       Clean-Up
       Break
