@@ -101,12 +101,7 @@ Function Load-Globals {
 ##################################################################################################################################
 Function Create-ClientData {
    if((Get-rsRole -Value $env:COMPUTERNAME) -eq "Pull") {
-      if((Test-rsCloud)) {
-         $path = "C:\cloud-automation\secrets"
-      }
-      else {
-         $path = "C:\DevOps\secrets"
-      }
+      $path = "C:\DevOps\secrets"
       Add-Content -Value "`$d = @{" -Path $path
       Add-Content -Value "`"br`" = `"$($d.br)`"" -Path $path
       Add-Content -Value "`"wD`" = `"$($d.wD)`"" -Path $path
