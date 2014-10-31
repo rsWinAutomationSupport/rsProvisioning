@@ -23,23 +23,6 @@ Function Write-Log {
    return
 }
 
-##################################################################################################################################
-#                                             Function - Create custom Event Log for DevOps Automation
-##################################################################################################################################
-<#Function Create-Log {
-   $logSources = @(
-    "BasePrep", "rsCommon", "LCM", "Verify", "PullServerDSC", "HostsFile", "rsIEEsc", "rsUAC", "RS_rsADDomain", "RS_rsADDomainController", "RS_rsADUser", "RS_rsCloudServersOpenStack", "RS_rsCluster", "RS_rsComputer",
-     "RS_rsDatabase", "RS_rsDBPackage", "RS_rsDNSServerAddress", "RS_rsFirewall", "RS_rsFTP", "RS_rsGit", "RS_rsGitSSHKey", "RS_rsIISAuth", "RS_rsIPAddress", "RS_rsPullServerMonitor", "RS_rsScheduledTask",
-      "RS_rsSmbShare", "RS_rsSMTP", "RS_rsSSHKnownHosts", "RS_rsWaitForADDomain", "RS_rsWaitForCluster", "RS_rsWebApplication", "RS_rsWebAppPool", "RS_rsWebConfigKeyValue", "RS_rsWebsite",
-      "RS_rsWebVirtualDirectory", "RS_rsWPI", "RS_rsCloudLoadBalancers", "RS_rsRaxMon", "RS_rsClientMofs"
-    )
-   if((Get-EventLog -List).Log -notcontains "DevOps") {
-      foreach($logSource in $logSources) {
-         New-EventLog -LogName "DevOps" -Source $logSource
-      }
-   }
-}#>
-
 Function Load-Globals {
    if((Get-rsRole -Value $env:COMPUTERNAME) -eq "pull") {
       if(Test-rsCloud) {
@@ -72,7 +55,6 @@ Function Load-Globals {
    $currentValues = @{
     "stage" = $stage;
     "role" = (Get-rsRole -Value $env:COMPUTERNAME);
-    "serverName" = $serverName;
     "osVersion" = $osVersion;
     "pullServerName" = $pullServerName;
     "pullServerPublicIP" = $pullServerPublicIP;
