@@ -39,7 +39,7 @@ Configuration PullServerLCM
 }
 
 . (Get-rsSecrets)
-. "$($d.wD, $d.mR, 'PullServerInfo.ps1' -join '\' )"
+. "$("C:\DevOps", $d.mR, 'PullServerInfo.ps1' -join '\' )"
 if(Test-rsCloud) {
    $ObjectGuid = $session.GetValue("name").value -replace "instance-", ""
 }
