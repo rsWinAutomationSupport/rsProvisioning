@@ -97,6 +97,7 @@ Function Load-Globals {
 ##################################################################################################################################
 Function Disable-MSN {
    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Disabling MSN on all adapters"
+   (Get-NetAdapter).Name | % {Set-NetAdapterBinding -Name $_ -DisplayName "Client for Microsoft Networks" -Enabled $false}
    return
 }
 
