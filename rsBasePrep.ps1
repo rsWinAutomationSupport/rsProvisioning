@@ -96,25 +96,7 @@ Function Load-Globals {
 #                                             Function - Disable Client For Microsoft Networks
 ##################################################################################################################################
 Function Disable-MSN {
-   $isDone = $false
-   $timeOut = 0
-   do {
-      if($timeOut -ge 5) { 
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
-         break 
-      }
-      try {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Disabling MSN on all adapters"
-         (Get-NetAdapter).Name | % {Set-NetAdapterBinding -Name $_ -DisplayName "Client for Microsoft Networks" -Enabled $false}
-         $isDone = $true
-      }
-      catch {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to Disable MSN on adapters, sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
-         $timeOut += 1
-         Start-Sleep -Seconds 30
-      }
-   }
-   while ($isDone -eq $false)
+   Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Disabling MSN on all adapters"
    return
 }
 
