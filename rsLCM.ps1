@@ -41,6 +41,8 @@ Configuration PullServerLCM
 
 . (Get-rsSecrets)
 . "$("C:\DevOps", $d.mR, 'PullServerInfo.ps1' -join '\' )"
+New-rsEventLogSource -logSource LCM
+
 if(Test-rsCloud) {
    $ObjectGuid = $session.GetValue("name").value -replace "instance-", ""
 }
