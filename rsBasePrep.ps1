@@ -191,6 +191,7 @@ Function Get-TempPullDSC {
             chdir "C:\Program Files\WindowsPowerShell\Modules\"
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning https://github.com/rsWinAutomationSupport/rsGit.git"
             #### Temporary changed to forked rsGit for testing
+<<<<<<< HEAD
             #Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone  $("https://github.com", $d.gMO, "rsGit.git" -join '/')"
             ####
             #Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone  https://github.com/rsWinAutomationSupport/rsGit.git"
