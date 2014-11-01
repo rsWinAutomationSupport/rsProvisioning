@@ -166,10 +166,10 @@ Function Get-TempPullDSC {
             chdir "C:\Program Files\WindowsPowerShell\Modules\"
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning https://github.com/rsWinAutomationSupport/rsGit.git"
             #### Temporary changed to forked rsGit for testing
-            #Start -Wait $gitExe -ArgumentList "clone  $("https://github.com", $d.gMO, "rsGit.git" -join '/')"
+            #Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone  $("https://github.com", $d.gMO, "rsGit.git" -join '/')"
             ####
-            #Start -Wait $gitExe -ArgumentList "clone  https://github.com/rsWinAutomationSupport/rsGit.git"
-            Start -Wait $gitExe -ArgumentList "clone  $("https://github.com", $d.git_username, "rsGit.git" -join '/')"
+            #Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone  https://github.com/rsWinAutomationSupport/rsGit.git"
+            Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone --branch $($d.ProvBr) $("https://github.com", $d.git_username, "rsGit.git" -join '/')"
             if(Test-Path -Path "C:\Program Files\WindowsPowerShell\Modules\rsGit") {
                $isDone = $true
             }
@@ -197,7 +197,7 @@ Function Get-TempPullDSC {
          try {
             chdir "C:\DevOps"
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning $(("git@github.com:", $d.git_username -join ''), ($($d.mR), ".git" -join '') -join '/')"
-            Start -Wait $gitExe -ArgumentList "clone  $((('git@github.com:', $($d.git_username) -join ''), ($($d.mR), '.git' -join '')) -join '/')"
+            Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone --branch $($d.branch_rsConfigs) $((('git@github.com:', $($d.git_username) -join ''), ($($d.mR), '.git' -join '')) -join '/')"
             if(Test-Path -Path $("C:\DevOps", $($d.mR) -join '\')) {
                $isDone = $true
             }
@@ -230,7 +230,7 @@ Function Get-TempPullDSC {
          try {
             chdir "C:\DevOps"
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning $($d.mR , ".git" -join '') $((("https://", "##REDACTED_GITHUB_APIKEY##", "@github.com" -join ''), $d.git_username, $($d.mR , ".git" -join '')) -join '/')"
-            Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone  $((("https://", $d.git_Oathtoken, "@github.com" -join ''), $d.git_username, $($d.mR , ".git" -join '')) -join '/')"
+            Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone --branch $($d.branch_rsConfigs) $((("https://", $d.git_Oauthtoken, "@github.com" -join ''), $d.git_username, $($d.mR , ".git" -join '')) -join '/')"
             if(Test-Path -Path $("C:\DevOps", $($d.mR) -join '\')) {
                $isDone = $true
             }
