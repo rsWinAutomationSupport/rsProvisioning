@@ -593,11 +593,11 @@ switch ($stage) {
    1
    {
       Set-Service Browser -StartupType Manual
+      Disable-MSN
       Test-rsRackConnect
       Test-rsManaged
       Load-Globals
       Write-Log -value "Starting Stage 1"
-      Disable-MSN
       Set-GitPath
       Update-rsKnownHostsFile
       New-rsSSHKey
