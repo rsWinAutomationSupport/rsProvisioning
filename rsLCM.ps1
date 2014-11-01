@@ -1,4 +1,4 @@
-﻿
+﻿Import-Module rsCommon
 
 Configuration ClientLCM
 {
