@@ -44,7 +44,7 @@ Configuration PullServerLCM
 New-rsEventLogSource -logSource LCM
 
 if(Test-rsCloud) {
-   $ObjectGuid = $session.GetValue("name").value -replace "instance-", ""
+   $ObjectGuid = (Get-rsXenInfo -value name) -replace "instance-", ""
 }
 else {
    $ObjectGuid = (Get-DedicatedInfo -Value $env:COMPUTERNAME).id
