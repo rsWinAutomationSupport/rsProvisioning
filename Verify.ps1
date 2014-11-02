@@ -177,10 +177,13 @@ Function Remove-UnsedCerts {
          "git rm Certificates\Credentials\$cert.cer" >> c:\cloud-automation\out.txt
          Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "rm Certificates\Credentials\$cert.cer"
       }
-
+      
    }
 }
-
+Start-Service Browser
+Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Updating pullserverInfo.ps1 and pushing to github"
+Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.branc_rsConfigs)"
+Stop-Service Browser
 if((Get-rsRole -Value $env:COMPUTERNAME) -eq "pull") {
    $Global:catalog = Get-rsServiceCatalog
    $Global:AuthToken = Get-rsAuthToken
