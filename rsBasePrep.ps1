@@ -258,13 +258,12 @@ Function Get-TempPullDSC {
 ##################################################################################################################################
 Function Install-DSC {
    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing LCM"
-   Invoke-Command -ScriptBlock { Start -Wait -NoNewWindow PowerShell.exe $("C:\DevOps", $d.prov, "rsLCM.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
-   ### Install LCM on Current server
-   do {
-      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for LCM installation to complete, sleeping 5 seconds"
-      Start-Sleep -Seconds 5
+   try{
+      Invoke-Expression "C:\DevOps\rsProvisioning\rsLCM.ps1"
    }
-   while(!(Test-Path -Path "C:\Windows\System32\Configuration\MetaConfig.mof"))
+   catch {
+      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Error in LCM`n$($_.Exception.message)"
+   }
    if((Get-rsRole -Value $env:COMPUTERNAME) -ne "Pull") {
       $i = 0
       do {
