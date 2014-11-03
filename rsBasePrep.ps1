@@ -234,7 +234,7 @@ Function Get-TempPullDSC {
 Function Install-DSC {
    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing LCM"
    try{
-      Invoke-Expression "$($d.wD, $d.prov, 'rsLCM.ps1' -join '\')"
+      Invoke-Expression "C:\DevOps\rsProvisioning\rsLCM.ps1"
    }
    catch {
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Error in LCM`n$($_.Exception.message)"
