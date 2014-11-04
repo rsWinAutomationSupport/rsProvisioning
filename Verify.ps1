@@ -199,6 +199,7 @@ if((Get-rsRole -Value $env:COMPUTERNAME) -eq "pull") {
       $Global:isManaged = $false
    }
    Check-Hash
+   Remove-UnsedCerts
 }
 else {
    Check-Hosts
