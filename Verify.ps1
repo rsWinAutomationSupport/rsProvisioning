@@ -132,19 +132,21 @@ Function Install-Certs {
 }
 
 Function Remove-UnsedCerts {
-   $serversURL = ($catalog.access.serviceCatalog | Where-Object { $_.Name -eq "cloudServersOpenStack" }).endpoints.publicURL
-   $activeServers = Invoke-RestMethod -Uri "$serversURL/servers" -Headers $AuthToken
-   if ($activeServers) {
-      $certs = (Get-ChildItem $("C:\DevOps", $d.mR, "Certificates\Credentials\*cer" -join '\')).Name | ForEach-Object { $_.Split(".")[0]}
-      $unaccountedCerts =  $certs | Where-Object { -not ($activeServers.servers.id -contains $_)}
-      "="*60 >> C:\cloud-automation\out.txt
-      $certs -join ", " >> C:\cloud-automation\out.txt
-      $unaccountedCerts -join ", " >> C:\cloud-automation\out.txt
-      forEach ($cert in $unaccountedCerts) {
-         "git rm Certificates\Credentials\$cert.cer" >> c:\cloud-automation\out.txt
-         Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "rm Certificates\Credentials\$cert.cer"
+   if(Test-rsCloud) {
+      $serversURL = ($catalog.access.serviceCatalog | Where-Object { $_.Name -eq "cloudServersOpenStack" }).endpoints.publicURL
+      $activeServers = Invoke-rsRestMethod -Uri "$serversURL/servers" -Headers $AuthToken
+      if ($activeServers) {
+         $certs = (Get-ChildItem $("C:\DevOps", $d.mR, "Certificates\Credentials\*cer" -join '\')).Name | ForEach-Object { $_.Split(".")[0]}
+         $unaccountedCerts =  $certs | Where-Object { -not ($activeServers.servers.id -contains $_)}
+         "="*60 >> C:\DevOps\out.txt
+         $certs -join ", " >> C:\DevOps\out.txt
+         $unaccountedCerts -join ", " >> C:\DevOps\out.txt
+         forEach ($cert in $unaccountedCerts) {
+            "git rm Certificates\Credentials\$cert.cer" >> c:\DevOps\out.txt
+            Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "rm Certificates\Credentials\$cert.cer"
+         }
+         
       }
-      
    }
 }
 chdir $("C:\DevOps", $d.mR -join '\')
