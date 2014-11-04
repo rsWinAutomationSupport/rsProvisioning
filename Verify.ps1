@@ -132,12 +132,17 @@ Function Install-Certs {
 }
 
 Function Remove-UnsedCerts {
-   if(Test-rsCloud) {
-      $serversURL = ($catalog.access.serviceCatalog | Where-Object { $_.Name -eq "cloudServersOpenStack" }).endpoints.publicURL
-      $activeServers = Invoke-rsRestMethod -Uri "$serversURL/servers" -Headers $AuthToken
+   if( Test-rsCloud ) {
+      $activeServers = @()
+      if($d.ContainsKey("rs_username") -and $d.ContainsKey("rs_apikey") ){
+         $activeServers += Get-rsDetailsServers | ? {$_.metadata -match "rax_dsc_config"} | Select -Property id
+      }
+      if(Test-Path $('C:\DevOps',$d.mR,"dedicated.csv" -join '\')){
+         $activeServers += Import-Csv -Path $('C:\DevOps',$d.mR,"dedicated.csv" -join '\') | Select id
+      }
       if ($activeServers) {
-         $certs = (Get-ChildItem $("C:\DevOps", $d.mR, "Certificates\Credentials\*cer" -join '\')).Name | ForEach-Object { $_.Split(".")[0]}
-         $unaccountedCerts =  $certs | Where-Object { -not ($activeServers.servers.id -contains $_)}
+         $certs = (Get-ChildItem $("C:\DevOps", $d.mR, "Certificates\Credentials\*cer" -join '\')).BaseName
+         $unaccountedCerts = $certs | Where-Object { -not ($activeServers.id -contains $_)}
          "="*60 >> C:\DevOps\out.txt
          $certs -join ", " >> C:\DevOps\out.txt
          $unaccountedCerts -join ", " >> C:\DevOps\out.txt
@@ -145,7 +150,6 @@ Function Remove-UnsedCerts {
             "git rm Certificates\Credentials\$cert.cer" >> c:\DevOps\out.txt
             Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "rm Certificates\Credentials\$cert.cer"
          }
-         
       }
    }
 }
