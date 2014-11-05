@@ -22,29 +22,29 @@ if((Test-Path -Path "C:\Windows\System32\Configuration\Pending.mof") -and ((Get-
 ## This script is executed by the PullServerDSC scheduled task
 ## This script will check the hash value of the PullServerDSC.ps1 config script and if it has been modified it will create a new Hash and execute the PullServerDSC.ps1 script
 ## to start a new DSC configuration on the PullServer
-### will pull before running rsEnvironments.ps1
+### will pull before running rsPullServer.ps1
 Function Check-Hash {
    Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Pulling current configurations from github"
    if((Test-Path "C:\DevOps\rsEnvironments.hash") -eq $false) {
-      Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "File C:\DevOps\rsEnvironments.hash was not found, creating hash file and executing rsEnvironments.ps1"
-      Set-Content -Path "C:\DevOps\rsEnvironments.hash" -Value (Get-FileHash -Path $("C:\DevOps", $d.mR, "rsEnvironments.ps1" -join '\')).hash
+      Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "File C:\DevOps\rsEnvironments.hash was not found, creating hash file and executing rsPullServer.ps1"
+      Set-Content -Path "C:\DevOps\rsEnvironments.hash" -Value (Get-FileHash -Path $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')).hash
       do {
-         Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Installing DSC $("C:\DevOps", $d.mR, "rsEnvironments.ps1" -join '\')"
+         Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Installing DSC $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')"
          taskkill /F /IM WmiPrvSE.exe
-         Invoke-Command -ScriptBlock { start -Wait -NoNewWindow PowerShell.exe $("C:\DevOps", $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+         Invoke-Command -ScriptBlock { start -Wait -NoNewWindow PowerShell.exe $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
       }
       while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
       Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "PullServer DSC installation Complete."
    }
-   $checkHash = Get-FileHash $("C:\DevOps", $d.mR, "rsEnvironments.ps1" -join '\')
+   $checkHash = Get-FileHash $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')
    $currentHash = Get-Content "C:\DevOps\rsEnvironments.hash"
    if($checkHash.Hash -ne $currentHash) {
-      Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "rsEnvironments hash mismatch rsEnvironments has been updated, executing rsEnvironments.ps1"
-      Set-Content -Path "C:\DevOps\rsEnvironments.hash" -Value (Get-FileHash -Path $("C:\DevOps", $d.mR, "rsEnvironments.ps1" -join '\')).hash
+      Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "rsEnvironments hash mismatch rsEnvironments has been updated, executing rsPullServer.ps1"
+      Set-Content -Path "C:\DevOps\rsEnvironments.hash" -Value (Get-FileHash -Path $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')).hash
       do {
-         Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Installing DSC $("C:\DevOps", $d.mR, "rsEnvironments.ps1" -join '\')"
+         Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Installing DSC $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')"
          taskkill /F /IM WmiPrvSE.exe
-         Invoke-Command -ScriptBlock { start -Wait -NoNewWindow PowerShell.exe $("C:\DevOps", $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+         Invoke-Command -ScriptBlock { start -Wait -NoNewWindow PowerShell.exe $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
       }
       while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
       Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "PullServer DSC installation Complete."
@@ -83,11 +83,11 @@ Function Check-Hash {
    }  
    if($checkHash.Hash -eq $currentHash) {
       if(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof")) {
-         Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "rsEnvironments hash matches, but Current.mof does not exist, running rsEnvironments.ps1"
+         Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "rsEnvironments hash matches, but Current.mof does not exist, running rsPullServer.ps1"
          do {
-            Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Installing DSC $("C:\DevOps", $d.mR, "rsEnvironments.ps1" -join '\')"
+            Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Installing DSC $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')"
             taskkill /F /IM WmiPrvSE.exe
-            Invoke-Command -ScriptBlock { start -Wait -NoNewWindow PowerShell.exe $("C:\DevOps", $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+            Invoke-Command -ScriptBlock { start -Wait -NoNewWindow PowerShell.exe $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
          }
          while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
          Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "PullServer DSC installation Complete."

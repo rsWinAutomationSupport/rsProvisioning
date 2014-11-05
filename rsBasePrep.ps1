@@ -280,9 +280,9 @@ Function Install-DSC {
       while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
    }
    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "LCM installation complete"
-   ### Pullserver specific tasks, install WindowsFeature Web-Service, install SSL certificates then run rsEnvironments.ps1 to install DSC
+   ### Pullserver specific tasks, install WindowsFeature Web-Service, install SSL certificates then run rsPullServer.ps1 to install DSC
    if((Get-rsRole -Value $env:COMPUTERNAME) -eq "Pull") {
-      Set-Content -Path $("C:\DevOps", "rsEnvironments.hash" -join '\') -Value (Get-FileHash -Path $("C:\DevOps", $d.mR, "rsEnvironments.ps1" -join '\')).hash
+      Set-Content -Path $("C:\DevOps", "rsEnvironments.hash" -join '\') -Value (Get-FileHash -Path $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')).hash
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing WindowsFeature Web-Server"
       Install-WindowsFeature Web-Server
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "IIS installation Complete."
@@ -298,14 +298,14 @@ Function Install-DSC {
       if((Test-Path "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\web.config") -eq $false) {
          Copy-Item "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\PSDSCPullServer.config" -Destination "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\web.config"
       }
-      ### Run rsEnvironments.ps1 to install DSC on pullserver
+      ### Run rsPullServer.ps1 to install DSC on pullserver
       if(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof") {
          Remove-Item -Path "C:\Windows\System32\Configuration\Current.mof" -Force
       }
       do {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing DSC $("C:\DevOps", $d.mR, "rsEnvironments.ps1" -join '\')"
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing DSC $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')"
          taskkill /F /IM WmiPrvSE.exe
-         Invoke-Command -ScriptBlock { start -Wait -NoNewWindow PowerShell.exe $("C:\DevOps", $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+         Invoke-Command -ScriptBlock { start -Wait -NoNewWindow PowerShell.exe $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
       }
       while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "PullServer DSC installation Complete."
