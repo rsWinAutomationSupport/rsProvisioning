@@ -33,9 +33,9 @@ Function Load-Globals {
          if(($Global:catalog.access.user.roles | ? name -eq "rax_managed").id.count -gt 0) { $Global:isManaged = $true } else { $Global:isManaged = $false } 
       }
       else {
-         $Global:defaultRegion = "NA"
-         $Global:isRackConnect = "NA"
-         $Global:isManaged = "NA"
+         $Global:defaultRegion = (Get-DedicatedInfo).defaultRegion
+         $Global:isRackConnect = (Get-DedicatedInfo).isRackConnect
+         $Global:isManaged = $true
       }
       $Global:pullServerName = $env:COMPUTERNAME
       $Global:pullServerPublicIP = Get-rsAccessIPv4
@@ -66,31 +66,6 @@ Function Load-Globals {
     } | ConvertTo-Json
    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Current variable values during this iteration, $currentValues"
 }
-
-
-
-##################################################################################################################################
-#                                             Function - Generate Secrets file for Clients
-##################################################################################################################################
-<#Function Create-ClientData {
-   if((Get-rsRole -Value $env:COMPUTERNAME) -eq "Pull") {
-      $path = "C:\DevOps\secrets"
-      Add-Content -Value "`$d = @{" -Path $path
-      Add-Content -Value "`"br`" = `"$($d.br)`"" -Path $path
-      Add-Content -Value "`"wD`" = `"$($d.wD)`"" -Path $path
-      Add-Content -Value "`"mR`" = `"$($d.mR)`"" -Path $path
-      Add-Content -Value "`"prov`" = `"$($d.prov)`"" -Path $path
-      Add-Content -Value "`"provBr`" = `"$($d.provBr)`"" -Path $path
-      Add-Content -Value "`"bS`" = `"$($d.bS)`"" -Path $path
-      Add-Content -Value "`"gS`" = `"$($d.gS)`"" -Path $path
-      Add-Content -Value "`"gPath`" = `"$($d.gPath)`"" -Path $path
-      Add-Content -Value "`"gX`" = `"$($d.gX)`"" -Path $path
-      Add-Content -Value "`"gCA`" = `"$($d.gCA)`"" -Path $path
-      Add-Content -Value "`"gAPI`" = `"$($d.gAPI)`"" -Path $path
-      Add-Content -Value "`"gMO`" = `"$($d.gMO)`"" -Path $path
-      Add-Content -Value "}" -Path $path
-   }
-}#>
 
 ##################################################################################################################################
 #                                             Function - Disable Client For Microsoft Networks
