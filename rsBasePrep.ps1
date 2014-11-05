@@ -580,7 +580,6 @@ switch ($stage) {
       Update-rsGitConfig -scope system -attribute user.name -value $env:COMPUTERNAME
       Get-TempPullDSC
       Load-Globals
-      Create-ClientData
       Disable-TOE
       tzutil /s "Central Standard Time"
       Create-ScheduledTask
