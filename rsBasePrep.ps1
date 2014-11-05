@@ -33,9 +33,9 @@ Function Load-Globals {
          if(($Global:catalog.access.user.roles | ? name -eq "rax_managed").id.count -gt 0) { $Global:isManaged = $true } else { $Global:isManaged = $false } 
       }
       else {
-         $Global:defaultRegion = "NA"
-         $Global:isRackConnect = "NA"
-         $Global:isManaged = "NA"
+         $Global:defaultRegion = (Get-DedicatedInfo).defaultRegion
+         $Global:isRackConnect = (Get-DedicatedInfo).isRackConnect
+         $Global:isManaged = $true
       }
       $Global:pullServerName = $env:COMPUTERNAME
       $Global:pullServerPublicIP = Get-rsAccessIPv4
