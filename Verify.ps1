@@ -25,9 +25,9 @@ if((Test-Path -Path "C:\Windows\System32\Configuration\Pending.mof") -and ((Get-
 ### will pull before running rsPullServer.ps1
 Function Check-Hash {
    Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Pulling current configurations from github"
-   if((Test-Path "C:\DevOps\rsEnvironments.hash") -eq $false) {
+   if((Test-Path "C:\DevOps\rsPullServer.hash") -eq $false) {
       Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "File C:\DevOps\rsEnvironments.hash was not found, creating hash file and executing rsPullServer.ps1"
-      Set-Content -Path "C:\DevOps\rsEnvironments.hash" -Value (Get-FileHash -Path $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')).hash
+      Set-Content -Path "C:\DevOps\rsPullServer.hash" -Value (Get-FileHash -Path $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')).hash
       do {
          Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Installing DSC $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')"
          taskkill /F /IM WmiPrvSE.exe
@@ -37,10 +37,10 @@ Function Check-Hash {
       Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "PullServer DSC installation Complete."
    }
    $checkHash = Get-FileHash $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')
-   $currentHash = Get-Content "C:\DevOps\rsEnvironments.hash"
+   $currentHash = Get-Content "C:\DevOps\rsPullServer.hash"
    if($checkHash.Hash -ne $currentHash) {
-      Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "rsEnvironments hash mismatch rsEnvironments has been updated, executing rsPullServer.ps1"
-      Set-Content -Path "C:\DevOps\rsEnvironments.hash" -Value (Get-FileHash -Path $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')).hash
+      Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "rsPullServer hash mismatch rsPullServer has been updated, executing rsPullServer.ps1"
+      Set-Content -Path "C:\DevOps\rsPullServer.hash" -Value (Get-FileHash -Path $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')).hash
       do {
          Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Installing DSC $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')"
          taskkill /F /IM WmiPrvSE.exe
@@ -48,9 +48,10 @@ Function Check-Hash {
       }
       while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
       Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "PullServer DSC installation Complete."
+   }  
    if($checkHash.Hash -eq $currentHash) {
       if(!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof")) {
-         Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "rsEnvironments hash matches, but Current.mof does not exist, running rsPullServer.ps1"
+         Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "rsPullServer hash matches, but Current.mof does not exist, running rsPullServer.ps1"
          do {
             Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Installing DSC $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')"
             taskkill /F /IM WmiPrvSE.exe
@@ -59,7 +60,7 @@ Function Check-Hash {
          while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
          Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "PullServer DSC installation Complete."
       }
-      Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "rsEnvironments hash matches, no changes have been made to rsEnvironments, executing consistency check"
+      Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "rsPullServer hash matches, no changes have been made to rsPullServer, executing consistency check"
       Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
    }
 }
