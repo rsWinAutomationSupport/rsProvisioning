@@ -97,7 +97,7 @@ Function Create-PullServerInfo {
          Add-Content -Path $path -Value "`"region`" = `$$(Get-rsRegion -Value $env:COMPUTERNAME)"
       }
       else {
-         Add-Content -Path $path -Value "`"region`" = `"$(Get-rsRegion -Value $env:COMPUTERNAME)""
+         Add-Content -Path $path -Value "`"region`" = `"$(Get-rsRegion -Value $env:COMPUTERNAME)`""
       }
       Add-Content -Path $path -Value "`"isRackConnect`" = `$$($isRackConnect.toString().toLower())"
       Add-Content -Path $path -Value "`"isManaged`" = `$$($isManaged.toString().toLower())"
@@ -119,11 +119,11 @@ Function Create-PullServerInfo {
       Stop-Service Browser
    }
 }
-
-
-##################################################################################################################################
-#                                             Function - Set path variable for Git
-##################################################################################################################################
+   
+   
+   ##################################################################################################################################
+   #                                             Function - Set path variable for Git
+   ##################################################################################################################################
 Function Set-GitPath {
    $currentPath = (Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH).Path
    $newPath = $currentPath + ";C:\Program Files (x86)\Git\bin\"
@@ -137,9 +137,9 @@ Function Install-TempDSC {
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Temporary DSC intallation complete"
    }
 }
-##################################################################################################################################
-#                                             Function - Download rsGit Move & Run rsPlatform (pull server)
-##################################################################################################################################
+   ##################################################################################################################################
+   #                                             Function - Download rsGit Move & Run rsPlatform (pull server)
+   ##################################################################################################################################
 Function Get-TempPullDSC {
    if($role -eq "Pull") {
       Start-Service Browser
@@ -232,10 +232,10 @@ Function Get-TempPullDSC {
       while ($isDone -eq $false)
    }
 } 
-
-##################################################################################################################################
-#                                             Function - Install DSC (all nodes)
-##################################################################################################################################
+   
+   ##################################################################################################################################
+   #                                             Function - Install DSC (all nodes)
+   ##################################################################################################################################
 Function Install-DSC {
    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing LCM"
    try{
@@ -293,32 +293,32 @@ Function Install-DSC {
    }
    return
 }
-
-
-##################################################################################################################################
-#                                             Function - Create reg key to track execution progress in Baseprep
-##################################################################################################################################
+   
+   
+   ##################################################################################################################################
+   #                                             Function - Create reg key to track execution progress in Baseprep
+   ##################################################################################################################################
 Function Set-Stage {
    param ( [int]$value )
    Write-Log -value "Setting staging key to $value"
    Set-ItemProperty -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WinDevOps" -Name "BuildScript" -Value $value -Force
    return
 }
-
-
-##################################################################################################################################
-#                                             Function - Create scheduled task to resume BasePrep after reboot
-##################################################################################################################################
+   
+   
+   ##################################################################################################################################
+   #                                             Function - Create scheduled task to resume BasePrep after reboot
+   ##################################################################################################################################
 Function Create-ScheduledTask {
    Write-Log -value "Creating BasePrep.ps1 scheduled task"
    schtasks.exe /create /sc Onstart /tn BasePrep /ru System /tr "PowerShell.exe -ExecutionPolicy Bypass -file C:\DevOps\rsProvisioning\rsBasePrep.ps1"
    return
 }
-
-
-##################################################################################################################################
-#                                             Function - Disable TOE on all net adapters
-##################################################################################################################################
+   
+   
+   ##################################################################################################################################
+   #                                             Function - Disable TOE on all net adapters
+   ##################################################################################################################################
 Function Disable-TOE {
    Write-Log -value "disabling TOE"
    if($osVersion -gt 6.2) {
@@ -354,19 +354,19 @@ Function Disable-TOE {
    }
    return
 }
-
-
-##################################################################################################################################
-#                                             Function - Set .NET machine keys (all nodes - required for webfarm viewstate decryption)
-##################################################################################################################################
+   
+   
+   ##################################################################################################################################
+   #                                             Function - Set .NET machine keys (all nodes - required for webfarm viewstate decryption)
+   ##################################################################################################################################
 function Set-MachineKey {
    $netfx = @{
-                "1x86" = "C:\WINDOWS\Microsoft.NET\Framework\v1.1.4322\CONFIG\machine.config"
-                "2x86" = "C:\WINDOWS\Microsoft.NET\Framework\v2.0.50727\CONFIG\machine.config"
-                "4x86" = "C:\WINDOWS\Microsoft.NET\Framework\v4.0.30319\CONFIG\machine.config"
-                "2x64" = "C:\WINDOWS\Microsoft.NET\Framework64\v2.0.50727\CONFIG\machine.config"
-                "4x64" = "C:\WINDOWS\Microsoft.NET\Framework64\v4.0.30319\CONFIG\machine.config"
-                }
+   "1x86" = "C:\WINDOWS\Microsoft.NET\Framework\v1.1.4322\CONFIG\machine.config"
+   "2x86" = "C:\WINDOWS\Microsoft.NET\Framework\v2.0.50727\CONFIG\machine.config"
+   "4x86" = "C:\WINDOWS\Microsoft.NET\Framework\v4.0.30319\CONFIG\machine.config"
+   "2x64" = "C:\WINDOWS\Microsoft.NET\Framework64\v2.0.50727\CONFIG\machine.config"
+   "4x64" = "C:\WINDOWS\Microsoft.NET\Framework64\v4.0.30319\CONFIG\machine.config"
+   }
    Write-Log -value "Setting Machine Keys"
    foreach ($key in $netfx.Keys) {
       $machineConfig = $netfx[$key]
@@ -385,10 +385,10 @@ function Set-MachineKey {
       }
    }
 }
-
-##################################################################################################################################
-#                                             Function - Install .NET 4.5 (if needed)
-##################################################################################################################################
+   
+   ##################################################################################################################################
+   #                                             Function - Install .NET 4.5 (if needed)
+   ##################################################################################################################################
 Function Install-Net45 {
    if($netVersion -lt 4.5) {
       if((Test-Path -PathType Container -Path "C:\DevOps\net45_InstallDir") -eq $false) {
@@ -400,11 +400,11 @@ Function Install-Net45 {
    }
    return
 }
-
-
-##################################################################################################################################
-#                                             Function - Install WMF4 (if needed)
-##################################################################################################################################
+   
+   
+   ##################################################################################################################################
+   #                                             Function - Install WMF4 (if needed)
+   ##################################################################################################################################
 Function Install-WMF4 {
    if($osVersion -lt 6.2 -and $wmfVersion -lt 4) {
       if((Test-Path -PathType Container -Path "C:\DevOps\wmf4_InstallDir") -eq $false) {
@@ -427,12 +427,12 @@ Function Install-WMF4 {
       return
    }
 }
-
-
-
-##################################################################################################################################
-#                                             Function - Format D Drive (perf cloud servers)
-##################################################################################################################################
+   
+   
+   
+   ##################################################################################################################################
+   #                                             Function - Format D Drive (perf cloud servers)
+   ##################################################################################################################################
 Function Set-DataDrive {
    if(Test-rsCloud) {
       Write-Log -value "Formatting D: drive"
@@ -461,11 +461,11 @@ Function Set-DataDrive {
       return
    }
 }
-
-
-##################################################################################################################################
-#                                             Function - Update Xen Client Tools (if needed)
-##################################################################################################################################
+   
+   
+   ##################################################################################################################################
+   #                                             Function - Update Xen Client Tools (if needed)
+   ##################################################################################################################################
 Function Update-XenTools {
    [System.Reflection.Assembly]::LoadWithPartialName("System.IO.Compression.FileSystem") | Out-Null
    $destination = "C:\DevOps\"
@@ -499,11 +499,11 @@ Function Update-XenTools {
    }
    return
 }
-
-
-##################################################################################################################################
-#                                             Function - Add pull server info to HOSTS file
-##################################################################################################################################
+   
+   
+   ##################################################################################################################################
+   #                                             Function - Add pull server info to HOSTS file
+   ##################################################################################################################################
 Function Update-HostFile {
    . "$("C:\DevOps", $d.mR, "PullServerInfo.ps1" -join '\')"
    $pullServerRegion = $pullServerInfo.region
@@ -533,41 +533,41 @@ Function Update-HostFile {
       return
    }
 }
-
-
-##################################################################################################################################
-#                                             Function - Cleanup secrets file
-##################################################################################################################################
+   
+   
+   ##################################################################################################################################
+   #                                             Function - Cleanup secrets file
+   ##################################################################################################################################
 Function Clean-Up {
    if(Test-Path -Path "C:\DevOps\xs-tools-6.2.0") { Remove-Item "C:\DevOps\xs-tools-6.2.0" -Recurse -Force }
    if(Test-Path -Path "C:\DevOps\xs-tools-6.2.0.zip") { Remove-Item "C:\DevOps\xs-tools-6.2.0.zip" -Recurse -Force }
    schtasks.exe /Delete /TN BasePrep /F
 }
-
-
-##################################################################################################################################
-#                                             Setting Script Wide Variables
-##################################################################################################################################
-
+   
+   
+   ##################################################################################################################################
+   #                                             Setting Script Wide Variables
+   ##################################################################################################################################
+   
 if((Test-Path -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WinDevOps") -eq $false) {
    New-Item -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE" -Name "WinDevOps" -Force
    Set-ItemProperty -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WinDevOps" -Name "BuildScript" -Value 1 -Force
 }
-    $stage = (Get-ItemProperty -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WinDevOps").BuildScript
-    $role = Get-rsRole -Value $env:COMPUTERNAME
-    $osVersion = (Get-WmiObject -class Win32_OperatingSystem).Version
-    $currentDate = (get-date).tostring("mm_dd_yyyy-hh_mm_s")
-    $wmfVersion = $PSVersionTable.PSVersion.Major
-    $netVersion = (Get-ItemProperty -Path "hklm:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full").Version
-##################################################################################################################################
-
-
-##################################################################################################################################
-#                                             Script Stages Starts Here
-##################################################################################################################################
-
-
-
+   $stage = (Get-ItemProperty -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WinDevOps").BuildScript
+   $role = Get-rsRole -Value $env:COMPUTERNAME
+   $osVersion = (Get-WmiObject -class Win32_OperatingSystem).Version
+   $currentDate = (get-date).tostring("mm_dd_yyyy-hh_mm_s")
+   $wmfVersion = $PSVersionTable.PSVersion.Major
+$netVersion = (Get-ItemProperty -Path "hklm:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full").Version
+   ##################################################################################################################################
+   
+   
+   ##################################################################################################################################
+   #                                             Script Stages Starts Here
+   ##################################################################################################################################
+   
+   
+   
 switch ($stage) {
    
    1
