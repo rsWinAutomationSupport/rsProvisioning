@@ -156,8 +156,8 @@ Function Get-TempPullDSC {
             #### Temporary changed to forked rsGit for testing
             #Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone  $("https://github.com", $d.gMO, "rsGit.git" -join '/')"
             ####
-            #Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone  https://github.com/rsWinAutomationSupport/rsGit.git"
-            Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone --branch $($d.ProvBr) $("https://github.com", $d.git_username, "rsGit.git" -join '/')"
+            Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone --branch master https://github.com/rsWinAutomationSupport/rsGit.git"
+            #Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone --branch $($d.ProvBr) $("https://github.com", $d.git_username, "rsGit.git" -join '/')"
             if(Test-Path -Path "C:\Program Files\WindowsPowerShell\Modules\rsGit") {
                $isDone = $true
             }
