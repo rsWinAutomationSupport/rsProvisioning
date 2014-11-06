@@ -1,84 +1,87 @@
-﻿
+﻿Import-Module rsCommon
 
 Configuration ClientLCM
 {
-    param ($Node, $pullServerUri, $ObjectGuid, $CertificateID)
-
-    Node $Node
-    {
-        LocalConfigurationManager
-        {
-            AllowModuleOverwrite = 'True'
-            ConfigurationID = $ObjectGuid
-            CertificateID = $CertificateID
-            ConfigurationModeFrequencyMins = 30
-            ConfigurationMode = 'ApplyAndAutoCorrect'
-            RebootNodeIfNeeded = 'True'
-            RefreshMode = 'Pull'
-            RefreshFrequencyMins = 15
-            DownloadManagerName = 'WebDownloadManager'
-            DownloadManagerCustomData = (@{ServerUrl = $pullServerUri; AllowUnsecureConnection = "false"})
-        }
-    }
+   param ($Node, $pullServerUri, $ObjectGuid, $CertificateID)
+   
+   Node $Node
+   {
+      LocalConfigurationManager
+      {
+         AllowModuleOverwrite = 'True'
+         ConfigurationID = $ObjectGuid
+         CertificateID = $CertificateID
+         ConfigurationModeFrequencyMins = 30
+         ConfigurationMode = 'ApplyAndAutoCorrect'
+         RebootNodeIfNeeded = 'True'
+         RefreshMode = 'Pull'
+         RefreshFrequencyMins = 15
+         DownloadManagerName = 'WebDownloadManager'
+         DownloadManagerCustomData = (@{ServerUrl = $pullServerUri; AllowUnsecureConnection = "false"})
+      }
+   }
 }
 
 Configuration PullServerLCM
 {
-
-    Node $env:COMPUTERNAME
-    {
-        LocalConfigurationManager
-        {
-            AllowModuleOverwrite = 'True'
-            ConfigurationModeFrequencyMins = 30
-            ConfigurationMode = 'ApplyAndAutoCorrect'
-            RebootNodeIfNeeded = 'True'
-            RefreshMode = 'PUSH'
-            RefreshFrequencyMins = 15
-        }
-    }
+   
+   Node $env:COMPUTERNAME
+   {
+      LocalConfigurationManager
+      {
+         AllowModuleOverwrite = 'True'
+         ConfigurationModeFrequencyMins = 30
+         ConfigurationMode = 'ApplyAndAutoCorrect'
+         RebootNodeIfNeeded = 'True'
+         RefreshMode = 'PUSH'
+         RefreshFrequencyMins = 15
+      }
+   }
 }
 
-. "C:\cloud-automation\secrets.ps1"
-. "$($d.wD, $d.mR, 'PullServerInfo.ps1' -join '\' )"
+. (Get-rsSecrets)
+. "$("C:\DevOps", $d.mR, 'PullServerInfo.ps1' -join '\' )"
+New-rsEventLogSource -logSource LCM
 
-    $base = gwmi -n root\wmi -cl CitrixXenStoreBase
-    $sid = $base.AddSession("MyNewSession")
-    $session = gwmi -n root\wmi -q "select * from CitrixXenStoreSession where SessionId=$($sid.SessionId)"
-    $role = $session.GetValue("vm-data/user-metadata/Role").value -replace "`"", ""
-    $ObjectGuid = $session.GetValue("name").value -replace "instance-", ""
+if(Test-rsCloud) {
+   $ObjectGuid = (Get-rsXenInfo -value name) -replace "instance-", ""
+}
+else {
+   $ObjectGuid = (Get-rsDedicatedInfo -Value $env:COMPUTERNAME).id
+}
 
-    if($role -eq "Pull") {
-        $pullServerName = $env:COMPUTERNAME
-        chdir "C:\Windows\Temp"
-        PullServerLCM
-        Set-DscLocalConfigurationManager -Path "C:\Windows\Temp\PullServerLCM" -Verbose
-        Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
-        $result = Get-DscLocalConfigurationManager | ConvertTo-Json -Depth 4
-        Write-EventLog -LogName DevOps -Source LCM -EntryType Information -EventId 1000 -Message "Applying Desired State Local Configuration $result"
-    }
-    else {
-        $Node = $env:COMPUTERNAME
-        $cN = "CN=" + $Node + "_enc"
-        Set-Location -Path ($d.wD, $d.mR -join "\")
-        Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.br)"
-
-        if (!(Test-Path -Path $($d.wD, $d.mR, "Certificates", "Credentials" -join '\')))
-        {
-            New-Item -Path $($d.wD, $d.mR, "Certificates", "Credentials" -join '\') -ItemType directory
-        }
-        powershell.exe $($d.wD, $d.prov, "makecert.exe" -join '\') -r -pe -n $cN -sky exchange -ss my $($d.wD, $d.mR, "Certificates\Credentials","$ObjectGuid.cer"  -join '\'), -sr localmachine, -len 2048
-        Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certificates\Credentials","$ObjectGuid.cer"  -join '\')"
-        Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -a -m `"pushing $ObjectGuid.crt`""
-        Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
-        chdir "C:\Windows\Temp"
-        $pullServerName = $pullServerInfo.pullServerName
-        $pullServerUri = "https://" + $pullServerName + ":8080/PSDSCPullServer.svc"
-        $certThumbPrint = (Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.PrivateKey.KeySize -eq 2048 -and $_.Subject -eq $cN}).Thumbprint
-        ClientLCM -Node $Node -pullServerUri $pullServerUri -ObjectGuid $ObjectGuid -CertificateID $certThumbPrint -OutputPath "C:\Windows\Temp"
-        Set-DscLocalConfigurationManager -Path "C:\Windows\Temp" -Verbose
-        Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
-        $result = Get-DscLocalConfigurationManager | ConvertTo-Json -Depth 4
-        Write-EventLog -LogName DevOps -Source LCM -EntryType Information -EventId 1000 -Message "Applying Desired State Local Configuration $result"
-    }
+if((Get-rsRole -Value $env:COMPUTERNAME) -eq "pull") {
+   $pullServerName = $env:COMPUTERNAME
+   chdir "C:\Windows\Temp"
+   PullServerLCM
+   Set-DscLocalConfigurationManager -Path "C:\Windows\Temp\PullServerLCM" -Verbose
+   Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
+   $result = Get-DscLocalConfigurationManager | ConvertTo-Json -Depth 4
+   Write-EventLog -LogName DevOps -Source LCM -EntryType Information -EventId 1000 -Message "Applying Desired State Local Configuration $result"
+}
+else {
+   $Node = $env:COMPUTERNAME
+   $cN = "CN=" + $Node + "_enc"
+   Set-Location -Path ("C:\DevOps", $d.mR -join "\")
+   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.branch_rsConfigs)"
+   
+   if (!(Test-Path -Path $("C:\DevOps", $d.mR, "Certificates", "Credentials" -join '\')))
+   {
+      New-Item -Path $("C:\DevOps", $d.mR, "Certificates", "Credentials" -join '\') -ItemType directory
+   }
+   powershell.exe "C:\DevOps\rsProvisioning\makecert.exe" -r -pe -n $cN -sky exchange -ss my $("C:\DevOps", $d.mR, "Certificates\Credentials","$ObjectGuid.cer"  -join '\'), -sr localmachine, -len 2048
+   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $("C:\DevOps", $d.mR, "Certificates\Credentials","$ObjectGuid.cer"  -join '\')"
+   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -a -m `"pushing $ObjectGuid.crt`""
+   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.branch_rsConfigs)"
+   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.branch_rsConfigs)"
+   chdir "C:\Windows\Temp"
+   $pullServerName = $pullServerInfo.pullServerName
+   $pullServerUri = "https://" + $pullServerName + ":8080/PSDSCPullServer.svc"
+   $certThumbPrint = (Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.PrivateKey.KeySize -eq 2048 -and $_.Subject -eq $cN}).Thumbprint
+   ClientLCM -Node $Node -pullServerUri $pullServerUri -ObjectGuid $ObjectGuid -CertificateID $certThumbPrint -OutputPath "C:\Windows\Temp"
+   Set-DscLocalConfigurationManager -Path "C:\Windows\Temp" -Verbose
+   Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
+   $result = Get-DscLocalConfigurationManager | ConvertTo-Json -Depth 4
+   Write-EventLog -LogName DevOps -Source LCM -EntryType Information -EventId 1000 -Message "Applying Desired State Local Configuration $result"
+}
 
