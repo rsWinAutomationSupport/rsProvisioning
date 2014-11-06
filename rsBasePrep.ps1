@@ -1,9 +1,17 @@
 ﻿Set-ExecutionPolicy -ExecutionPolicy Bypass -Force
-
-##################################################################################################################################
-#                                             Start Script Functions
-##################################################################################################################################
-#test
+if([System.Diagnostics.EventLog]::SourceExists('BasePrep')) {
+}
+else {
+   New-EventLog -LogName "DevOps" -Source BasePrep
+}
+Import-Module rsCommon
+. (Get-rsSecrets)
+if(Test-Path -Path "C:\DevOps\dedicated.csv") {
+   $DedicatedData = Import-Csv -Path "C:\DevOps\dedicated.csv"
+}
+if(Test-Path -Path $("C:\DevOps", $d.mR, 'PullServerinfo.ps1' -join '\')) {
+   . "$("C:\DevOps", $d.mR, 'PullServerinfo.ps1' -join '\')"
+}
 
 ##################################################################################################################################
 #                                             Function - Write Event Log Entries
@@ -14,90 +22,28 @@ Function Write-Log {
    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message ($timeStamp + ":`t" + $value)
    return
 }
-Function Get-ServiceCatalog {
-   return (Invoke-RestMethod -Uri $("https://identity.api.rackspacecloud.com/v2.0/tokens") -Method POST -Body $(@{"auth" = @{"RAX-KSKEY:apiKeyCredentials" = @{"username" = $($d.cU); "apiKey" = $($d.cAPI)}}} | convertTo-Json) -ContentType application/json)
-}
-
-##################################################################################################################################
-#                                             Function - Retrieve server role from XenStore WMI metadata
-##################################################################################################################################
-Function Get-Role {
-   $base = gwmi -n root\wmi -cl CitrixXenStoreBase
-   $sid = $base.AddSession("MyNewSession")
-   $session = gwmi -n root\wmi -q "select * from CitrixXenStoreSession where SessionId=$($sid.SessionId)"
-   $role = $session.GetValue("vm-data/user-metadata/Role").value -replace "`"", ""
-   return $role
-}
-
-
-##################################################################################################################################
-#                                             Function - Retrieve server region from XenStore WMI
-##################################################################################################################################
-Function Get-Region {
-   $base = gwmi -n root\wmi -cl CitrixXenStoreBase
-   $sid = $base.AddSession("MyNewSession")
-   $session = gwmi -n root\wmi -q "select * from CitrixXenStoreSession where SessionId=$($sid.SessionId)"
-   $region = $session.GetValue("vm-data/provider_data/region").value -replace "`"", ""
-   return $region
-}
-
-Function Get-AccessIPv4 {
-   $uri = (($Global:catalog.access.serviceCatalog | ? name -eq "cloudServersOpenStack").endpoints | ? region -eq $Global:serverRegion).publicURL
-   $isDone = $false
-   $timeOut = 0
-   do {
-      if($timeOut -ge 5) { 
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
-         break 
-      }
-      try {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Retrieving accessIPv4 address $accessIPv4"
-         $accessIPv4 = (((Invoke-RestMethod -Uri $($uri + "/servers/detail") -Method GET -Headers $AuthToken -ContentType application/json).servers) | ? { $_.name -eq $env:COMPUTERNAME}).accessIPv4
-         $isDone = $true
-      }
-      catch {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to retrieve accessIPv4 address, sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
-         $timeOut += 1
-         Start-Sleep -Seconds 30
-      }
-   }
-   while ($isDone -eq $false)
-   return $accessIPv4
-}
-##################################################################################################################################
-#                                             Function - Create custom Event Log for DevOps Automation
-##################################################################################################################################
-Function Create-Log {
-   $logSources = @(
-    "BasePrep", "LCM", "Verify", "PullServerDSC", "HostsFile", "rsIEEsc", "rsUAC", "RS_rsADDomain", "RS_rsADDomainController", "RS_rsADUser", "RS_rsCloudServersOpenStack", "RS_rsCluster", "RS_rsComputer",
-     "RS_rsDatabase", "RS_rsDBPackage", "RS_rsDNSServerAddress", "RS_rsFirewall", "RS_rsFTP", "RS_rsGit", "RS_rsGitSSHKey", "RS_rsIISAuth", "RS_rsIPAddress", "RS_rsPullServerMonitor", "RS_rsScheduledTask",
-      "RS_rsSmbShare", "RS_rsSMTP", "RS_rsSSHKnownHosts", "RS_rsWaitForADDomain", "RS_rsWaitForCluster", "RS_rsWebApplication", "RS_rsWebAppPool", "RS_rsWebConfigKeyValue", "RS_rsWebsite",
-      "RS_rsWebVirtualDirectory", "RS_rsWPI", "RS_rsCloudLoadBalancers", "RS_rsRaxMon", "RS_rsClientMofs"
-    )
-   if((Get-EventLog -List).Log -notcontains "DevOps") {
-      foreach($logSource in $logSources) {
-         New-EventLog -LogName "DevOps" -Source $logSource
-      }
-   }
-}
 
 Function Load-Globals {
-   $Global:serverName = $env:COMPUTERNAME
-   $Global:serverRegion = Get-Region
-   if($role -eq "Pull") {
-      $Global:catalog = Get-ServiceCatalog
-      $Global:AuthToken = @{"X-Auth-Token"=($Global:catalog.access.token.id)}
-      $Global:defaultRegion = $Global:catalog.access.user.'RAX-AUTH:defaultRegion'
-      if(($Global:catalog.access.user.roles | ? name -eq "rack_connect").id.count -gt 0) { $Global:isRackConnect = $true } else { $Global:isRackConnect = $false } 
-      if(($Global:catalog.access.user.roles | ? name -eq "rax_managed").id.count -gt 0) { $Global:isManaged = $true } else { $Global:isManaged = $false } 
+   if((Get-rsRole -Value $env:COMPUTERNAME) -eq "pull") {
+      if(Test-rsCloud) {
+         $Global:catalog = Get-rsServiceCatalog
+         $Global:AuthToken = @{"X-Auth-Token"=($Global:catalog.access.token.id)}
+         $Global:defaultRegion = $Global:catalog.access.user.'RAX-AUTH:defaultRegion'
+         if(($Global:catalog.access.user.roles | ? name -eq "rack_connect").id.count -gt 0) { $Global:isRackConnect = $true } else { $Global:isRackConnect = $false } 
+         if(($Global:catalog.access.user.roles | ? name -eq "rax_managed").id.count -gt 0) { $Global:isManaged = $true } else { $Global:isManaged = $false } 
+      }
+      else {
+         $Global:defaultRegion = (Get-rsDedicatedInfo | ? {$_.name -eq $env:COMPUTERNAME}).defaultRegion
+         $Global:isRackConnect = (Get-rsDedicatedInfo | ? {$_.name -eq $env:COMPUTERNAME}).isRackConnect
+         $Global:isManaged = $true
+      }
       $Global:pullServerName = $env:COMPUTERNAME
-      $Global:pullServerPublicIP = Get-AccessIPv4
+      $Global:pullServerPublicIP = Get-rsAccessIPv4
       $Global:pullServerPrivateIP = (Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -match '^10\.').IPAddress
-      $Global:pullServerRegion = Get-Region
+      $Global:pullServerRegion = Get-rsRegion -Value $env:COMPUTERNAME
    }
    else 
    {
-      . "$($d.wD, $d.mR, "PullServerInfo.ps1" -join '\')"
       $Global:pullServerName = $pullServerInfo.pullServerName
       $Global:pullServerPublicIP = $pullserverInfo.pullserverPublicIp
       $Global:pullServerPrivateIP = $pullServerInfo.pullServerPrivateIp
@@ -108,13 +54,12 @@ Function Load-Globals {
    }
    $currentValues = @{
     "stage" = $stage;
-    "role" = $role;
-    "serverName" = $serverName;
+    "role" = (Get-rsRole -Value $env:COMPUTERNAME);
     "osVersion" = $osVersion;
     "pullServerName" = $pullServerName;
     "pullServerPublicIP" = $pullServerPublicIP;
     "pullServerPrivateIP" = $pullServerPrivateIP;
-    "serverRegion" = $serverRegion;
+    "serverRegion" = (Get-rsRegion -Value $env:COMPUTERNAME);
     "pullServerRegion" = $pullServerRegion;
     "wmfVersion" = $wmfVersion;
     "netVersion" = $netVersion;
@@ -123,185 +68,23 @@ Function Load-Globals {
 }
 
 ##################################################################################################################################
-#                                             Function - Download files
-##################################################################################################################################
-Function Download-File {
-   param ( [string]$url, [string]$path )
-   $webclient = New-Object System.Net.WebClient
-   $isDone = $false
-   $timeOut = 0
-   do {
-      if($timeOut -ge 5) { 
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
-         break 
-      }
-      try {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Attempting to download $url."
-         $webclient.DownloadFile($url,$path)
-         $isDone = $true
-      }
-      catch {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to download $url sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
-         $timeOut += 1
-         Start-Sleep -Seconds 30
-      }
-   }
-   while ($isDone -eq $false)
-   return
-}
-
-
-##################################################################################################################################
-#                                             Function - Generate Secrets file for Clients
-##################################################################################################################################
-Function Create-ClientData {
-   if($role -eq "Pull") {
-      $path = "C:\cloud-automation\secrets"
-      Add-Content -Value "`$d = @{" -Path $path
-      Add-Content -Value "`"br`" = `"$($d.br)`"" -Path $path
-      Add-Content -Value "`"wD`" = `"$($d.wD)`"" -Path $path
-      Add-Content -Value "`"mR`" = `"$($d.mR)`"" -Path $path
-      Add-Content -Value "`"prov`" = `"$($d.prov)`"" -Path $path
-      Add-Content -Value "`"provBr`" = `"$($d.provBr)`"" -Path $path
-      Add-Content -Value "`"bS`" = `"$($d.bS)`"" -Path $path
-      Add-Content -Value "`"gS`" = `"$($d.gS)`"" -Path $path
-      Add-Content -Value "`"gPath`" = `"$($d.gPath)`"" -Path $path
-      Add-Content -Value "`"gX`" = `"$($d.gX)`"" -Path $path
-      Add-Content -Value "`"gCA`" = `"$($d.gCA)`"" -Path $path
-      Add-Content -Value "`"gAPI`" = `"$($d.gAPI)`"" -Path $path
-      Add-Content -Value "`"gMO`" = `"$($d.gMO)`"" -Path $path
-      Add-Content -Value "}" -Path $path
-   }
-}
-
-Function Check-RC {
-   $currentRegion = Get-Region
-   Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Checking Rackconnect: Current region $currentRegion isRackconnect $Global:isRackConnect isManaged $Global:isManaged defaultRegion $Global:defaultRegion"
-   if($Global:isRackConnect -and ($currentRegion -eq $Global:defaultRegion)) {
-      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "The server is Rackconnect and is in the default region"
-      $uri = $(("https://", $currentRegion -join ''), ".api.rackconnect.rackspace.com/v1/automation_status?format=text" -join '')
-      do {
-         $rcStatus = Invoke-RestMethod -Uri $uri -Method GET -ContentType application/json
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "RackConnect status is: $rcStatus"
-         Start-Sleep -Seconds 10
-      }
-      while ($rcStatus -ne "DEPLOYED")
-      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "RackConnect status is: $rcStatus"
-   }
-}
-
-Function Check-Managed {
-   Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Checking to see if account is managed"
-   $currentRegion = Get-Region
-   if($Global:isManaged -or (($Global:defaultRegion -ne $currentRegion) -and $Global:isRackConnect)) {
-      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Account is either managed or server is not in the default region isManaged $Global:isManaged defaultRegion $Global:defaultRegion Current region $currentRegion isRackConnect $Global:isRackConnect starting to sleep"
-      Start-Sleep -Seconds 60
-      $base = gwmi -n root\wmi -cl CitrixXenStoreBase 
-      $sid = $base.AddSession("MyNewSession") 
-      $session = gwmi -n root\wmi -q "select * from CitrixXenStoreSession where SessionId=$($sid.SessionId)" 
-      if( $session.GetValue("vm-data/user-metadata/rax_service_level_automation").value.count -gt 0 ) { $exists = $true }
-      else { 
-         $exists = $false 
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "rax_service_level_automation is not completed."
-      } 
-      if ( $exists )
-      {
-         do {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for rax_service_level_automation."
-            Start-Sleep -Seconds 30
-         }
-         while ( (Test-Path "C:\Windows\Temp\rs_managed_cloud_automation_complete.txt" ) -eq $false)
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "rax_service_level_automation complete."
-      }
-   } 
-}
-
-##################################################################################################################################
 #                                             Function - Disable Client For Microsoft Networks
 ##################################################################################################################################
 Function Disable-MSN {
-   $isDone = $false
-   $timeOut = 0
-   do {
-      if($timeOut -ge 5) { 
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
-         break 
-      }
-      try {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Disabling MSN on all adapters"
-         (Get-NetAdapter).Name | % {Set-NetAdapterBinding -Name $_ -DisplayName "Client for Microsoft Networks" -Enabled $false}
-         $isDone = $true
-      }
-      catch {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to Disable MSN on adapters, sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
-         $timeOut += 1
-         Start-Sleep -Seconds 30
-      }
-   }
-   while ($isDone -eq $false)
+   Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Disabling MSN on all adapters"
+   (Get-NetAdapter).Name | % {Set-NetAdapterBinding -Name $_ -DisplayName "Client for Microsoft Networks" -Enabled $false}
    return
 }
-##################################################################################################################################
-#                                             Function - Add Github SSH keys to known hosts(all nodes). Generate server SSH key and add to Github account(pull server)
-##################################################################################################################################
-Function Create-SshKey {
-   set-service Browser -StartupType Manual
-   $sshPaths = @("C:\Program Files (x86)\Git\.ssh", "C:\Windows\SysWOW64\config\systemprofile\.ssh", "C:\Windows\System32\config\systemprofile\.ssh")
-   foreach($sshPath in $sshPaths) {
-      if(!(Test-Path -Path $sshPath)) {
-         try {
-            New-Item -Path $sshPath -ItemType container
-         }
-         catch {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to create directory $sshPath `n $($_.Execption.Message)"
-         }
-      }
-      New-Item $($sshPath, "known_hosts" -join '\') -ItemType File -Force
-      Add-Content $($sshPath, "known_hosts" -join '\') -Value "github.com,192.30.252.129 ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ=="
-      Add-Content $($sshPath, "known_hosts" -join '\') -Value "192.30.252.128 ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ=="
-      Add-Content $($sshPath, "known_hosts" -join '\') -Value "192.30.252.131 ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ=="
-      Add-Content $($sshPath, "known_hosts" -join '\') -Value "192.30.252.130 ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ=="
-   }
-   Start-Service Browser
-   Remove-Item "C:\Program Files (x86)\Git\.ssh\id_rsa*"
-   if($role -eq "Pull") {
-      # Creates Pull Server ssh key and pushes to GitHub account C:\Program Files (x86)\Git\.ssh
-      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Generating ssh Key"
-      try {
-         Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\ssh-keygen.exe" -ArgumentList "-t rsa -f 'C:\Program Files (x86)\Git\.ssh\id_rsa' -P """""
-      }
-      catch {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to generate SSH Key `n $($_.Exception.Message)"
-      }
-      $keys = Invoke-RestMethod -Uri "https://api.github.com/user/keys" -Headers @{"Authorization" = "token $($d.gAPI)"} -ContentType application/json -Method GET
-      $pullKeys = $keys | ? title -eq $($d.DDI + "_" + $pullServerName)
-      if((($pullKeys).id).count -gt 0) {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Found an existing SSH Key on github, assuming this is a pullserver is being rebuilt.  Deleting previous SSH Key"
-         foreach($pullKey in $pullKeys) {
-            Invoke-RestMethod -Uri $("https://api.github.com/user/keys/" + $pullKey.id) -Headers @{"Authorization" = "token $($d.gAPI)"} -ContentType application/json -Method DELETE
-         }
-      }
-      $sshKey = Get-Content -Path "C:\Program Files (x86)\Git\.ssh\id_rsa.pub"
-      $json = @{"title" = "$($d.DDI + "_" + $env:COMPUTERNAME)"; "key" = "$sshKey"} | ConvertTo-Json
-      Invoke-RestMethod -Uri "https://api.github.com/user/keys" -Headers @{"Authorization" = "token $($d.gAPI)"} -Body $json -ContentType application/json -Method Post
-   }
-   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "config --system user.email $serverName@localhost.local"
-   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "config --system user.name $serverName"
-   Stop-Service Browser
-   return
-}
-
-
 
 ##################################################################################################################################
 #                                             Function - Edit PullServerInfo.ps1 and push to customer configuration repo
 ##################################################################################################################################
 Function Create-PullServerInfo {
-   if($role -eq "Pull") {
-      $region = Get-Region
-      chdir $($d.wD, $d.mR -join '\')
+   if((Get-rsRole -Value $env:COMPUTERNAME) -eq "Pull") {
+      $region = Get-rsRegion -Value $env:COMPUTERNAME
+      chdir $("C:\DevOps", $d.mR -join '\')
       $pullServerName = $env:COMPUTERNAME
-      $path = $($d.wD + "\" + $d.mR + "\" + "PullServerInfo.ps1")
+      $path = $("C:\DevOps" + "\" + $d.mR + "\" + "PullServerInfo.ps1")
       if(Test-Path -Path $path) {
          Remove-Item -Path $path -Force
       }
@@ -310,32 +93,37 @@ Function Create-PullServerInfo {
       Add-Content -Path $path -Value "`"pullServerName`" = `"$pullServerName`""
       Add-Content -Path $path -Value "`"pullServerPrivateIp`" = `"$pullServerPrivateIp`""
       Add-Content -Path $path -Value "`"pullServerPublicIp`" = `"$pullServerPublicIp`""
-      Add-Content -Path $path -Value "`"region`" = `"$region`""
+      if(Test-rsCloud){
+         Add-Content -Path $path -Value "`"region`" = `$$(Get-rsRegion -Value $env:COMPUTERNAME)"
+      }
+      else {
+         Add-Content -Path $path -Value "`"region`" = `"$(Get-rsRegion -Value $env:COMPUTERNAME)`""
+      }
       Add-Content -Path $path -Value "`"isRackConnect`" = `$$($isRackConnect.toString().toLower())"
       Add-Content -Path $path -Value "`"isManaged`" = `$$($isManaged.toString().toLower())"
       Add-Content -Path $path -Value "`"defaultRegion`" = `"$defaultRegion`""
       Add-Content -Path $path -Value "}"
       Start-Service Browser
       $trackedFiles = @()
-      $fileNames = (Get-Item -Path $($d.wD, $d.mR, "Certificates", '*' -join '\')).Name
+      $fileNames = (Get-Item -Path $("C:\DevOps", $d.mR, "Certificates", '*' -join '\')).Name
       foreach($fileName in $fileNames) {
-         $trackedFiles += $($d.wD, $d.mR, "Certificates", $fileName -join '\')
+         $trackedFiles += $("C:\DevOps", $d.mR, "Certificates", $fileName -join '\')
       }
-      $trackedFiles += $($d.wD, $d.mR, "PullServerInfo.ps1" -join '\')
+      $trackedFiles += $("C:\DevOps", $d.mR, "PullServerInfo.ps1" -join '\')
       foreach($trackedFile in $trackedFiles) {
          Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $trackedFile"
       }
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -a -m `"$pullServerName pushing PullServerInfo.ps1`""
-      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.br)"
-      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
+      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.branch_rsConfigs)"
+      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.branch_rsConfigs)"
       Stop-Service Browser
    }
 }
-
-
-##################################################################################################################################
-#                                             Function - Set path variable for Git
-##################################################################################################################################
+   
+   
+   ##################################################################################################################################
+   #                                             Function - Set path variable for Git
+   ##################################################################################################################################
 Function Set-GitPath {
    $currentPath = (Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH).Path
    $newPath = $currentPath + ";C:\Program Files (x86)\Git\bin\"
@@ -343,15 +131,15 @@ Function Set-GitPath {
 }
    
 Function Install-TempDSC {
-   if($role -eq "Pull") {
-      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing inital temporary DSC configuration $($d.wD, $d.prov, "initDSC.ps1" -join '\')"
-      Invoke-Command -ScriptBlock {Start -Wait -NoNewWindow PowerShell.exe $($d.wD, $d.prov, "initDSC.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+   if((Get-rsRole -Value $env:COMPUTERNAME) -eq "Pull") {
+      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing inital temporary DSC configuration C:\DevOps\rsProvisioning\initDSC.ps1"
+      Invoke-Command -ScriptBlock {Start -Wait -NoNewWindow PowerShell.exe "C:\DevOps\rsProvisioning\initDSC.ps1"} -ArgumentList "-ExecutionPolicy Bypass -Force"
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Temporary DSC intallation complete"
    }
 }
-##################################################################################################################################
-#                                             Function - Download rsGit Move & Run rsPlatform (pull server)
-##################################################################################################################################
+   ##################################################################################################################################
+   #                                             Function - Download rsGit Move & Run rsPlatform (pull server)
+   ##################################################################################################################################
 Function Get-TempPullDSC {
    if($role -eq "Pull") {
       Start-Service Browser
@@ -364,19 +152,23 @@ Function Get-TempPullDSC {
          }
          try {
             chdir "C:\Program Files\WindowsPowerShell\Modules\"
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning $("https://github.com", $d.gMO, "rsGit.git" -join '/')"
-            Start -Wait $gitExe -ArgumentList "clone  $("https://github.com", $d.gMO, "rsGit.git" -join '/')"
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning https://github.com/rsWinAutomationSupport/rsGit.git"
+            #### Temporary changed to forked rsGit for testing
+            #Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone  $("https://github.com", $d.gMO, "rsGit.git" -join '/')"
+            ####
+            #Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone  https://github.com/rsWinAutomationSupport/rsGit.git"
+            Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone --branch $($d.ProvBr) $("https://github.com", $d.git_username, "rsGit.git" -join '/')"
             if(Test-Path -Path "C:\Program Files\WindowsPowerShell\Modules\rsGit") {
                $isDone = $true
             }
             else {
-               Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone $("https://github.com", $d.gMO, "rsGit.git" -join '/'), sleeping for 5 seconds then trying again. `n $($_.Exception.Message)"
+               Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone https://github.com/rsWinAutomationSupport/rsGit.git, sleeping for 5 seconds then trying again. `n $($_.Exception.Message)"
                $timeOut += 1
                Start-Sleep -Seconds 5
             }
          }
          catch {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone $("https://github.com", $d.gMO, "rsGit.git" -join '/'), sleeping for 5 seconds then trying again. `n $($_.Exception.Message)"
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone https://github.com/rsWinAutomationSupport/rsGit.git, sleeping for 5 seconds then trying again. `n $($_.Exception.Message)"
             $timeOut += 1
             Start-Sleep -Seconds 5
          }
@@ -391,19 +183,19 @@ Function Get-TempPullDSC {
             break 
          }
          try {
-            chdir $($d.wD)
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning $(("git@github.com:", $d.gCA -join ''), ($($d.mR), ".git" -join '') -join '/')"
-            Start -Wait $gitExe -ArgumentList "clone  $((('git@github.com:', $($d.gCA) -join ''), ($($d.mR), '.git' -join '')) -join '/')"
-            if(Test-Path -Path $($d.wD, $($d.mR) -join '\')) {
+            chdir "C:\DevOps"
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning $(("git@github.com:", $d.git_username -join ''), ($($d.mR), ".git" -join '') -join '/')"
+            Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone --branch $($d.branch_rsConfigs) $((('git@github.com:', $($d.git_username) -join ''), ($($d.mR), '.git' -join '')) -join '/')"
+            if(Test-Path -Path $("C:\DevOps", $($d.mR) -join '\')) {
                $isDone = $true
             }
             else {
-               Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone $(("git@github.com:", $d.gCA -join ''), ($($d.mR), ".git" -join '') -join '/'), sleeping for 5 seconds then trying again. `n $($_.Exception.Message)"
+               Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone $(("git@github.com:", $d.git_username -join ''), ($($d.mR), ".git" -join '') -join '/'), sleeping for 5 seconds then trying again. `n $($_.Exception.Message)"
                $timeOut += 1
             }
          }
          catch {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone $(("git@github.com:", $d.gCA -join ''), ($($d.mR), ".git" -join '') -join '/'), sleeping for 5 seconds then trying again. `n $($_.Exception.Message)"
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone $(("git@github.com:", $d.git_username -join ''), ($($d.mR), ".git" -join '') -join '/'), sleeping for 5 seconds then trying again. `n $($_.Exception.Message)"
             $timeOut += 1
             Start-Sleep -Seconds 5
          }
@@ -413,7 +205,7 @@ Function Get-TempPullDSC {
       if((Test-Path -Path "C:\Program Files\WindowsPowerShell\DscService\Modules" -PathType Container) -eq $false) {
          New-Item -Path "C:\Program Files\WindowsPowerShell\DscService\Modules" -ItemType Container
       }
-      Copy-Item $($d.wD, $d.mR, "rsPlatform" -join '\') "C:\Program Files\WindowsPowerShell\Modules" -Recurse
+      Copy-Item $("C:\DevOps", $d.mR, "rsPlatform" -join '\') "C:\Program Files\WindowsPowerShell\Modules" -Recurse
    }
    else {
       $isDone = $false
@@ -424,15 +216,15 @@ Function Get-TempPullDSC {
             break 
          }
          try {
-            chdir $($d.wD)
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning $($d.mR , ".git" -join '') $((("https://", "##REDACTED_GITHUB_APIKEY##", "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/')"
-            Start -Wait $gitExe -ArgumentList "clone  $((("https://", $d.gAPI, "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/')"
-            if(Test-Path -Path $($d.wD, $($d.mR) -join '\')) {
+            chdir "C:\DevOps"
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning $($d.mR , ".git" -join '') $((("https://", "##REDACTED_GITHUB_APIKEY##", "@github.com" -join ''), $d.git_username, $($d.mR , ".git" -join '')) -join '/')"
+            Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone --branch $($d.branch_rsConfigs) $((("https://", $d.git_Oauthtoken, "@github.com" -join ''), $d.git_username, $($d.mR , ".git" -join '')) -join '/')"
+            if(Test-Path -Path $("C:\DevOps", $($d.mR) -join '\')) {
                $isDone = $true
             }
          }
          catch {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to Clone $($d.mR , ".git" -join '') $((("https://", "##REDACTED_GITHUB_APIKEY##", "@github.com" -join ''), $d.gCA, $($d.mR , ".git" -join '')) -join '/'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to Clone $($d.mR , ".git" -join '') $((("https://", "##REDACTED_GITHUB_APIKEY##", "@github.com" -join ''), $d.git_username, $($d.mR , ".git" -join '')) -join '/'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
             $timeOut += 1
             Start-Sleep -Seconds 5
          }
@@ -440,24 +232,23 @@ Function Get-TempPullDSC {
       while ($isDone -eq $false)
    }
 } 
-
-##################################################################################################################################
-#                                             Function - Install DSC (all nodes)
-##################################################################################################################################
+   
+   ##################################################################################################################################
+   #                                             Function - Install DSC (all nodes)
+   ##################################################################################################################################
 Function Install-DSC {
    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing LCM"
-   Invoke-Command -ScriptBlock { Start -Wait -NoNewWindow PowerShell.exe $($d.wD, $d.prov, "rsLCM.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
-   ### Install LCM on Current server
-   do {
-      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for LCM installation to complete, sleeping 5 seconds"
-      Start-Sleep -Seconds 5
+   try{
+      Invoke-Expression "C:\DevOps\rsProvisioning\rsLCM.ps1"
    }
-   while(!(Test-Path -Path "C:\Windows\System32\Configuration\MetaConfig.mof"))
-   if($role -ne "Pull") {
+   catch {
+      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Error in LCM`n$($_.Exception.message)"
+   }
+   if((Get-rsRole -Value $env:COMPUTERNAME) -ne "Pull") {
       $i = 0
       do {
          if ( $((Get-WinEvent Microsoft-Windows-DSC/Operational | Select -First 1).id) -eq "4104" ) {
-             Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
+            Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
          }
          if($i -gt 5) {
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for Client to install DSC configuration"
@@ -469,9 +260,9 @@ Function Install-DSC {
       while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
    }
    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "LCM installation complete"
-   ### Pullserver specific tasks, install WindowsFeature Web-Service, install SSL certificates then run rsEnvironments.ps1 to install DSC
-   if($role -eq "Pull") {
-      Set-Content -Path $($d.wD, "rsEnvironments.hash" -join '\') -Value (Get-FileHash -Path $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')).hash
+   ### Pullserver specific tasks, install WindowsFeature Web-Service, install SSL certificates then run rsPullServer.ps1 to install DSC
+   if((Get-rsRole -Value $env:COMPUTERNAME) -eq "Pull") {
+      Set-Content -Path $("C:\DevOps", "rsPullServer.hash" -join '\') -Value (Get-FileHash -Path $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')).hash
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing WindowsFeature Web-Server"
       Install-WindowsFeature Web-Server
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "IIS installation Complete."
@@ -487,52 +278,54 @@ Function Install-DSC {
       if((Test-Path "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\web.config") -eq $false) {
          Copy-Item "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\PSDSCPullServer.config" -Destination "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\web.config"
       }
-      ### Run rsEnvironments.ps1 to install DSC on pullserver
+      ### Run rsPullServer.ps1 to install DSC on pullserver
       if(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof") {
          Remove-Item -Path "C:\Windows\System32\Configuration\Current.mof" -Force
       }
       do {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing DSC $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')"
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing DSC $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')"
          taskkill /F /IM WmiPrvSE.exe
-         Invoke-Command -ScriptBlock { start -Wait -NoNewWindow PowerShell.exe $($d.wD, $d.mR, "rsEnvironments.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+         Invoke-Command -ScriptBlock { start -Wait -NoNewWindow PowerShell.exe $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
       }
       while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "PullServer DSC installation Complete."
    }
    return
 }
-
-
-##################################################################################################################################
-#                                             Function - Create reg key to track execution progress in Baseprep
-##################################################################################################################################
+   
+   
+   ##################################################################################################################################
+   #                                             Function - Create reg key to track execution progress in Baseprep
+   ##################################################################################################################################
 Function Set-Stage {
    param ( [int]$value )
    Write-Log -value "Setting staging key to $value"
    Set-ItemProperty -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WinDevOps" -Name "BuildScript" -Value $value -Force
    return
 }
-
-
-##################################################################################################################################
-#                                             Function - Create scheduled task to resume BasePrep after reboot
-##################################################################################################################################
+   
+   
+   ##################################################################################################################################
+   #                                             Function - Create scheduled task to resume BasePrep after reboot
+   ##################################################################################################################################
 Function Create-ScheduledTask {
    Write-Log -value "Creating BasePrep.ps1 scheduled task"
-   schtasks.exe /create /sc Onstart /tn BasePrep /ru System /tr "PowerShell.exe -ExecutionPolicy Bypass -file $($d.wD, $d.prov, $d.bS -join '\')"
+   schtasks.exe /create /sc Onstart /tn BasePrep /ru System /tr "PowerShell.exe -ExecutionPolicy Bypass -file C:\DevOps\rsProvisioning\rsBasePrep.ps1"
    return
 }
-
-
-##################################################################################################################################
-#                                             Function - Disable TOE on all net adapters
-##################################################################################################################################
+   
+   
+   ##################################################################################################################################
+   #                                             Function - Disable TOE on all net adapters
+   ##################################################################################################################################
 Function Disable-TOE {
    Write-Log -value "disabling TOE"
    if($osVersion -gt 6.2) {
       Disable-NetAdapterChecksumOffload * -TcpIPv4 -UdpIPv4 -IpIPv4 -NoRestart
       Disable-NetAdapterLso * -IPv4 -NoRestart
-      Set-NetAdapterAdvancedProperty * -DisplayName "Large Receive Offload (IPv4)" -DisplayValue Disabled –NoRestart
+      if(Test-rsCloud) {
+         Set-NetAdapterAdvancedProperty * -DisplayName "Large Receive Offload (IPv4)" -DisplayValue Disabled –NoRestart
+      }
       Restart-NetAdapter *
       return
    }
@@ -560,19 +353,19 @@ Function Disable-TOE {
    }
    return
 }
-
-
-##################################################################################################################################
-#                                             Function - Set .NET machine keys (all nodes - required for webfarm viewstate decryption)
-##################################################################################################################################
+   
+   
+   ##################################################################################################################################
+   #                                             Function - Set .NET machine keys (all nodes - required for webfarm viewstate decryption)
+   ##################################################################################################################################
 function Set-MachineKey {
    $netfx = @{
-                "1x86" = "C:\WINDOWS\Microsoft.NET\Framework\v1.1.4322\CONFIG\machine.config"
-                "2x86" = "C:\WINDOWS\Microsoft.NET\Framework\v2.0.50727\CONFIG\machine.config"
-                "4x86" = "C:\WINDOWS\Microsoft.NET\Framework\v4.0.30319\CONFIG\machine.config"
-                "2x64" = "C:\WINDOWS\Microsoft.NET\Framework64\v2.0.50727\CONFIG\machine.config"
-                "4x64" = "C:\WINDOWS\Microsoft.NET\Framework64\v4.0.30319\CONFIG\machine.config"
-                }
+   "1x86" = "C:\WINDOWS\Microsoft.NET\Framework\v1.1.4322\CONFIG\machine.config"
+   "2x86" = "C:\WINDOWS\Microsoft.NET\Framework\v2.0.50727\CONFIG\machine.config"
+   "4x86" = "C:\WINDOWS\Microsoft.NET\Framework\v4.0.30319\CONFIG\machine.config"
+   "2x64" = "C:\WINDOWS\Microsoft.NET\Framework64\v2.0.50727\CONFIG\machine.config"
+   "4x64" = "C:\WINDOWS\Microsoft.NET\Framework64\v4.0.30319\CONFIG\machine.config"
+   }
    Write-Log -value "Setting Machine Keys"
    foreach ($key in $netfx.Keys) {
       $machineConfig = $netfx[$key]
@@ -591,108 +384,110 @@ function Set-MachineKey {
       }
    }
 }
-
-##################################################################################################################################
-#                                             Function - Install .NET 4.5 (if needed)
-##################################################################################################################################
+   
+   ##################################################################################################################################
+   #                                             Function - Install .NET 4.5 (if needed)
+   ##################################################################################################################################
 Function Install-Net45 {
    if($netVersion -lt 4.5) {
-      if((Test-Path -PathType Container -Path $($d.wD, "net45_InstallDir" -join '\')) -eq $false) {
-         New-Item $($d.wD, "net45_InstallDir" -join '\') -ItemType Directory -Force
+      if((Test-Path -PathType Container -Path "C:\DevOps\net45_InstallDir") -eq $false) {
+         New-Item $("C:\DevOps", "net45_InstallDir" -join '\') -ItemType Directory -Force
       }
       Write-Log -value "Installing .NET 4.5"
-      Download-File -path $($d.wD, "net45_InstallDir", "dotNetFx45_Full_setup.exe" -join '\') -url "http://download.microsoft.com/download/B/A/4/BA4A7E71-2906-4B2D-A0E1-80CF16844F5F/dotNetFx45_Full_setup.exe"
-      Start -Wait -NoNewWindow $($d.wD, "net45_InstallDir", "dotNetFx45_Full_setup.exe" -join '\') -ArgumentList '/q /norestart'
+      Get-rsFile -path "C:\DevOps", "net45_InstallDir\dotNetFx45_Full_setup.exe" -url "http://download.microsoft.com/download/B/A/4/BA4A7E71-2906-4B2D-A0E1-80CF16844F5F/dotNetFx45_Full_setup.exe"
+      Start -Wait -NoNewWindow "C:\DevOps\dotNetFx45_Full_setup.exe" -ArgumentList '/q /norestart'
    }
    return
 }
-
-
-##################################################################################################################################
-#                                             Function - Install WMF4 (if needed)
-##################################################################################################################################
+   
+   
+   ##################################################################################################################################
+   #                                             Function - Install WMF4 (if needed)
+   ##################################################################################################################################
 Function Install-WMF4 {
    if($osVersion -lt 6.2 -and $wmfVersion -lt 4) {
-      if((Test-Path -PathType Container -Path $($d.wD, "wmf4_InstallDir" -join '\')) -eq $false) {
-         Write-Log -value "creating directory $($d.wD, "wmf4_InstallDir" -join '\')"
-         New-Item $($d.wD, "wmf4_InstallDir" -join '\') -ItemType Directory -Force
+      if((Test-Path -PathType Container -Path "C:\DevOps\wmf4_InstallDir") -eq $false) {
+         Write-Log -value "creating directory C:\DevOps\wmf4_InstallDir"
+         New-Item "C:\DevOps\wmf4_InstallDir" -ItemType Directory -Force
       }
       Write-Log -value "Installing WMF 4 on 2k8"
-      Download-File -path $($d.wD, "wmf4_InstallDir", "Windows6.1-KB2819745-x64-MultiPkg.msu" -join '\') -url "http://download.microsoft.com/download/3/D/6/3D61D262-8549-4769-A660-230B67E15B25/Windows6.1-KB2819745-x64-MultiPkg.msu"
-      Start -Wait -NoNewWindow $($d.wD, "wmf4_InstallDir", "Windows6.1-KB2819745-x64-MultiPkg.msu" -join '\') -ArgumentList '/quiet'
+      Get-rsFile -path "C:\DevOps\wmf4_InstallDir\Windows6.1-KB2819745-x64-MultiPkg.msu" -url "http://download.microsoft.com/download/3/D/6/3D61D262-8549-4769-A660-230B67E15B25/Windows6.1-KB2819745-x64-MultiPkg.msu"
+      Start -Wait -NoNewWindow "C:\DevOps\wmf4_InstallDir\Windows6.1-KB2819745-x64-MultiPkg.msu" -ArgumentList '/quiet'
       return
    }
    if($osVersion -gt 6.2 -and $wmfVersion -lt 4) {
-      if((Test-Path -PathType Container -Path $($d.wD, "wmf4_InstallDir" -join '\')) -eq $false) {
-         Write-Log -value "creating directory $($d.wD, "wmf4_InstallDir" -join '\')"
-         New-Item $($d.wD, "wmf4_InstallDir" -join '\') -ItemType Directory -Force
+      if((Test-Path -PathType Container -Path "C:\DevOps\wmf4_InstallDir") -eq $false) {
+         Write-Log -value "creating directory C:\DevOps\wmf4_InstallDir"
+         New-Item "C:\DevOps\wmf4_InstallDir" -ItemType Directory -Force
       }
       Write-Log -value "Installing WMF 4 on 2012"
-      Download-File -path $($d.wD, "wmf4_InstallDir", "Windows8-RT-KB2799888-x64.msu" -join '\') -url "http://download.microsoft.com/download/3/D/6/3D61D262-8549-4769-A660-230B67E15B25/Windows8-RT-KB2799888-x64.msu"
-      Start -Wait -NoNewWindow $($d.wD, "wmf4_InstallDir", "Windows8-RT-KB2799888-x64.msu" -join '\') -ArgumentList '/quiet'
+      Get-rsFile -path "C:\DevOps\wmf4_InstallDir\Windows8-RT-KB2799888-x64.msu" -url "http://download.microsoft.com/download/3/D/6/3D61D262-8549-4769-A660-230B67E15B25/Windows8-RT-KB2799888-x64.msu"
+      Start -Wait -NoNewWindow "C:\DevOps\wmf4_InstallDir\Windows8-RT-KB2799888-x64.msu" -ArgumentList '/quiet'
       return
    }
 }
-
-
-
-##################################################################################################################################
-#                                             Function - Format D Drive (perf cloud servers)
-##################################################################################################################################
+   
+   
+   
+   ##################################################################################################################################
+   #                                             Function - Format D Drive (perf cloud servers)
+   ##################################################################################################################################
 Function Set-DataDrive {
-   Write-Log -value "Formatting D: drive"
-   $partitions = gwmi Win32_DiskPartition
-   $scriptdisk = $Null
-   $script = $Null
-   foreach ($part in $partitions){
-      if ($part.Type -eq "Unknown"){
-         $drivenumber = $part.DiskIndex
-         $script = "select disk {0}`nattributes disk clear readonly noerr`nonline disk noerr`nclean`nattributes disk clear readonly noerr`ncreate partition primary noerr`nformat quick`n" -f $drivenumber
-      }
-      $drivenumber = $Null
-      $scriptdisk += $script + "`n"
+   if(Test-rsCloud) {
+      Write-Log -value "Formatting D: drive"
+      $partitions = gwmi Win32_DiskPartition
+      $scriptdisk = $Null
       $script = $Null
-   }
-   $scriptdisk | diskpart
-   $volumes = gwmi Win32_volume | where {$_.BootVolume -ne $True -and $_.SystemVolume -ne $True -and $_.DriveType -eq "3"}
-   $letters = 68..89 | ForEach-Object { ([char]$_)+":" }
-   $freeletters = $letters | Where-Object { (New-Object System.IO.DriveInfo($_)).DriveType -eq 'NoRootDirectory' }
-   foreach ($volume in $volumes){
-      if ($volume.DriveLetter -eq $Null){
-         mountvol $freeletters[0] $volume.DeviceID
+      foreach ($part in $partitions){
+         if ($part.Type -eq "Unknown"){
+            $drivenumber = $part.DiskIndex
+            $script = "select disk {0}`nattributes disk clear readonly noerr`nonline disk noerr`nclean`nattributes disk clear readonly noerr`ncreate partition primary noerr`nformat quick`n" -f $drivenumber
+         }
+         $drivenumber = $Null
+         $scriptdisk += $script + "`n"
+         $script = $Null
       }
+      $scriptdisk | diskpart
+      $volumes = gwmi Win32_volume | where {$_.BootVolume -ne $True -and $_.SystemVolume -ne $True -and $_.DriveType -eq "3"}
+      $letters = 68..89 | ForEach-Object { ([char]$_)+":" }
       $freeletters = $letters | Where-Object { (New-Object System.IO.DriveInfo($_)).DriveType -eq 'NoRootDirectory' }
+      foreach ($volume in $volumes){
+         if ($volume.DriveLetter -eq $Null){
+            mountvol $freeletters[0] $volume.DeviceID
+         }
+         $freeletters = $letters | Where-Object { (New-Object System.IO.DriveInfo($_)).DriveType -eq 'NoRootDirectory' }
+      }
+      return
    }
-   return
 }
-
-
-##################################################################################################################################
-#                                             Function - Update Xen Client Tools (if needed)
-##################################################################################################################################
+   
+   
+   ##################################################################################################################################
+   #                                             Function - Update Xen Client Tools (if needed)
+   ##################################################################################################################################
 Function Update-XenTools {
    [System.Reflection.Assembly]::LoadWithPartialName("System.IO.Compression.FileSystem") | Out-Null
-   $destination = $($d.wD + "\")
+   $destination = "C:\DevOps\"
    if ( $osVersion -lt "6.2" ) {
-      $path = $($d.wD, "nova_agent_1.2.7.0.zip" -join '\')
-      Download-File -url "http://cc527d412bd9bc2637b1-054807a7b8a5f81313db845a72a4785e.r34.cf1.rackcdn.com/nova_agent_1.2.7.0.zip" -path $path
+      $path = "C:\DevOps\nova_agent_1.2.7.0.zip"
+      Get-rsFile -url "http://cc527d412bd9bc2637b1-054807a7b8a5f81313db845a72a4785e.r34.cf1.rackcdn.com/nova_agent_1.2.7.0.zip" -path $path
       [System.IO.Compression.ZipFile]::ExtractToDirectory($path, $destination)
       Get-Service -DisplayName "Rackspace Cloud Servers*" | Stop-Service -Verbose
-      Copy-Item $($d.wD, "Cloud Servers\*" -join '\') "C:\Program Files\Rackspace\Cloud Servers\" -recurse -force
-      Remove-Item $($d.wD, "Cloud Servers" -join '\') -Force -Recurse
+      Copy-Item "C:\DevOps\Cloud Servers\*" "C:\Program Files\Rackspace\Cloud Servers\" -recurse -force
+      Remove-Item "C:\DevOps\Cloud Servers" -Force -Recurse
    }
    if($osVersion -lt "6.3") {
       
-      $path = $($d.wD, "xs-tools-6.2.0.zip" -join '\')
+      $path = "C:\DevOps\xs-tools-6.2.0.zip"
       try{
-         Download-File -url "http://1631170f67e7daa50e95-7dd27d3f3410187707440a293c5d1c09.r5.cf1.rackcdn.com/xs-tools-6.2.0.zip" -path $path
+         Get-rsFile -url "http://1631170f67e7daa50e95-7dd27d3f3410187707440a293c5d1c09.r5.cf1.rackcdn.com/xs-tools-6.2.0.zip" -path $path
       }
       catch {
          Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to Download Xentools. `n $($_.Exception.Message)"
       }
       [System.IO.Compression.ZipFile]::ExtractToDirectory($path, $destination)
       Write-Log -value "Installing Xen Tools 6.2"
-      Start -Wait $($d.wD, "xs-tools-6.2.0\installwizard.msi" -join '\' ) -ArgumentList '/qn PATH="C:\Program Files\Citrix\XenTools\"'
+      Start -Wait "C:\DevOps\xs-tools-6.2.0\installwizard.msi" -ArgumentList '/qn PATH="C:\Program Files\Citrix\XenTools\"'
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "XenTools installation complete."
    }
    if($osVersion -gt "6.3") {
@@ -703,26 +498,25 @@ Function Update-XenTools {
    }
    return
 }
-
-
-##################################################################################################################################
-#                                             Function - Add pull server info to HOSTS file
-##################################################################################################################################
+   
+   
+   ##################################################################################################################################
+   #                                             Function - Add pull server info to HOSTS file
+   ##################################################################################################################################
 Function Update-HostFile {
-   . "$($d.wD, $d.mR, "PullServerInfo.ps1" -join '\')"
-   $serverRegion = Get-Region
+   . "$("C:\DevOps", $d.mR, "PullServerInfo.ps1" -join '\')"
    $pullServerRegion = $pullServerInfo.region
    $pullServerName = $pullServerInfo.pullServerName
    $pullServerPublicIP = $pullserverInfo.pullserverPublicIp
    $pullServerPrivateIP = $pullServerInfo.pullServerPrivateIp
-   if($role -eq "Pull") {
-      $hostContent = ((Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -like '10.*').IPAddress + "`t`t`t" + $serverName)
+   if((Get-rsRole -Value $env:COMPUTERNAME) -eq "pull") {
+      $hostContent = ((Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -like '10.*').IPAddress + "`t`t`t" + $env:COMPUTERNAME)
       Add-Content -Path "C:\Windows\System32\Drivers\etc\hosts" -Value $hostContent -Force
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Adding $hostContent to PullServer Hosts File"
       return
    }
    else {
-      if($pullServerRegion -ne $serverRegion) {
+      if($pullServerRegion -ne (Get-rsRegion -Value $env:COMPUTERNAME)) {
          $pullServerIP = $pullServerPublicIP
       }
       else {
@@ -730,97 +524,67 @@ Function Update-HostFile {
       }
       $hostContent = $pullServerIP + "`t`t`t" + $pullServerName
       Add-Content -Path "C:\Windows\System32\Drivers\etc\hosts" -Value $hostContent -Force
-      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "PullServerRegion $pullServerRegion ServerRegion $serverRegion"
+      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "PullServerRegion $pullServerRegion ServerRegion $(Get-rsRegion -Value $env:COMPUTERNAME)"
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Adding $hostContent to HostsFile"
-      $hostContent = ((Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -like '10.*').IPAddress + "`t`t`t" + $serverName)
+      $hostContent = ((Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -like '10.*').IPAddress + "`t`t`t" + $env:COMPUTERNAME)
       Add-Content -Path "C:\Windows\System32\Drivers\etc\hosts" -Value $hostContent -Force
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Adding $hostContent to HostsFile"
       return
    }
 }
-
-
-##################################################################################################################################
-#                                             Function - Install SSL cert used for Client/Pull communications
-##################################################################################################################################
-Function Install-Certs {
-   if(!(Test-Path -Path $($d.wD, $d.mR, "Certificates" -join '\'))) {
-      New-Item $($d.wD, $d.mR, "Certificates" -join '\') -ItemType Container
-   }
-   if($role -eq "Pull") {
-      Start-Service Browser
-      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.br)"
-      Remove-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa*" -join '\') -Force
-      Write-Log -value "Installing Certificate"
-      Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa" -Destination $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\') -Force
-      Copy-Item -Path "C:\Program Files (x86)\Git\.ssh\id_rsa.pub" -Destination $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\') -Force
-      chdir $($d.wD, $d.mR -join '\')
-      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\')"
-      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\')"
-      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -a -m `"pushing ssh keys`""
-      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
-      Stop-Service Browser
-   }
-   if($role -ne "Pull") {
-      Copy-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa.txt" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa'
-      Copy-Item -Path $($d.wD, $d.mR, "Certificates\id_rsa.pub" -join '\') -Destination 'C:\Program Files (x86)\Git\.ssh\id_rsa.pub'
-      powershell.exe certutil -addstore -f root $($d.wD, $d.mR, "Certificates\PullServer.crt" -join '\')
-   }
-}
-
-
-##################################################################################################################################
-#                                             Function - Cleanup secrets file
-##################################################################################################################################
+   
+   
+   ##################################################################################################################################
+   #                                             Function - Cleanup secrets file
+   ##################################################################################################################################
 Function Clean-Up {
-   if(Test-Path -Path ($d.wD, "xs-tools-6.2.0" -join '\')) { Remove-Item ($d.wD, "xs-tools-6.2.0" -join '\') -Recurse -Force }
-   if(Test-Path -Path ($d.wD, "xs-tools-6.2.0.zip" -join '\')) { Remove-Item ($d.wD, "xs-tools-6.2.0.zip" -join '\') -Recurse -Force }
+   if(Test-Path -Path "C:\DevOps\xs-tools-6.2.0") { Remove-Item "C:\DevOps\xs-tools-6.2.0" -Recurse -Force }
+   if(Test-Path -Path "C:\DevOps\xs-tools-6.2.0.zip") { Remove-Item "C:\DevOps\xs-tools-6.2.0.zip" -Recurse -Force }
    schtasks.exe /Delete /TN BasePrep /F
 }
-
-
-##################################################################################################################################
-#                                             Setting Script Wide Variables
-##################################################################################################################################
-
-   . "C:\cloud-automation\secrets.ps1"  
    
-   $gitExe = "C:\Program Files (x86)\Git\bin\git.exe"
-
+   
+   ##################################################################################################################################
+   #                                             Setting Script Wide Variables
+   ##################################################################################################################################
+   
 if((Test-Path -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WinDevOps") -eq $false) {
    New-Item -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE" -Name "WinDevOps" -Force
    Set-ItemProperty -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WinDevOps" -Name "BuildScript" -Value 1 -Force
 }
-    $stage = (Get-ItemProperty -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WinDevOps").BuildScript
-    $role = Get-Role
-    $osVersion = (Get-WmiObject -class Win32_OperatingSystem).Version
-    $currentDate = (get-date).tostring("mm_dd_yyyy-hh_mm_s")
-    $wmfVersion = $PSVersionTable.PSVersion.Major
-    $netVersion = (Get-ItemProperty -Path "hklm:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full").Version
-##################################################################################################################################
-
-
-##################################################################################################################################
-#                                             Script Stages Starts Here
-##################################################################################################################################
-
-
-
+   $stage = (Get-ItemProperty -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WinDevOps").BuildScript
+   $role = Get-rsRole -Value $env:COMPUTERNAME
+   $osVersion = (Get-WmiObject -class Win32_OperatingSystem).Version
+   $currentDate = (get-date).tostring("mm_dd_yyyy-hh_mm_s")
+   $wmfVersion = $PSVersionTable.PSVersion.Major
+$netVersion = (Get-ItemProperty -Path "hklm:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full").Version
+   ##################################################################################################################################
+   
+   
+   ##################################################################################################################################
+   #                                             Script Stages Starts Here
+   ##################################################################################################################################
+   
+   
+   
 switch ($stage) {
    
    1
    {
-      Load-Globals
-      Create-Log
-      Write-Log -value "Starting Stage 1"
+      Set-Service Browser -StartupType Manual
       Disable-MSN
+      Test-rsRackConnect
+      Test-rsManaged
+      Load-Globals
+      Write-Log -value "Starting Stage 1"
       Set-GitPath
-      Create-SshKey
+      Update-rsKnownHostsFile
+      New-rsSSHKey
+      Push-rsSSHKey
+      Update-rsGitConfig -scope system -attribute user.email -value $env:COMPUTERNAME@localhost.local
+      Update-rsGitConfig -scope system -attribute user.name -value $env:COMPUTERNAME
       Get-TempPullDSC
       Load-Globals
-      Check-RC
-      Check-Managed
-      Create-ClientData
       Disable-TOE
       tzutil /s "Central Standard Time"
       Create-ScheduledTask
@@ -847,7 +611,7 @@ switch ($stage) {
       Install-TempDSC
       Create-PullServerInfo
       Update-HostFile
-      Install-Certs
+      Install-rsCertificates
       Install-DSC
       Set-Stage -value 4
       Restart-Computer -Force
