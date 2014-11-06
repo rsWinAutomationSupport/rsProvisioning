@@ -245,7 +245,6 @@ Function Install-DSC {
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Error in LCM`n$($_.Exception.message)"
    }
    if((Get-rsRole -Value $env:COMPUTERNAME) -ne "Pull") {
-   if($role -ne "Pull") {
       $i = 0
       do {
          if ( $((Get-WinEvent Microsoft-Windows-DSC/Operational | Select -First 1).id) -eq "4104" ) {
