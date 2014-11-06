@@ -97,7 +97,7 @@ Function Create-PullServerInfo {
          Add-Content -Path $path -Value "`"region`" = `$$(Get-rsRegion -Value $env:COMPUTERNAME)"
       }
       else {
-         Add-Content -Path $path -Value "`"region`" = $(Get-rsRegion -Value $env:COMPUTERNAME)"
+         Add-Content -Path $path -Value "`"region`" = `"$(Get-rsRegion -Value $env:COMPUTERNAME)""
       }
       Add-Content -Path $path -Value "`"isRackConnect`" = `$$($isRackConnect.toString().toLower())"
       Add-Content -Path $path -Value "`"isManaged`" = `$$($isManaged.toString().toLower())"
