@@ -132,26 +132,27 @@ Function Install-Certs {
 }
 
 Function Remove-UnsedCerts {
-   if( Test-rsCloud ) {
-      $activeServers = @()
-      if($d.ContainsKey("rs_username") -and $d.ContainsKey("rs_apikey") ){
-         $activeServers += Get-rsDetailsServers | ? {$_.metadata -match "rax_dsc_config"} | Select -Property id
+   #if( Test-rsCloud ) {
+   $activeServers = @()
+   if($d.ContainsKey("rs_username") -and $d.ContainsKey("rs_apikey") ){
+      $activeServers += Get-rsDetailsServers | ? {$_.metadata -match "rax_dsc_config"} | Select -Property id
+   }
+   if(Test-Path $('C:\DevOps',$d.mR,"dedicated.csv" -join '\')){
+      $activeServers += Import-Csv -Path $('C:\DevOps',$d.mR,"dedicated.csv" -join '\') | Select id
+   }
+   if ($activeServers) {
+      $certs = (Get-ChildItem $("C:\DevOps", $d.mR, "Certificates\Credentials\*cer" -join '\')).BaseName
+      $unaccountedCerts = $certs | Where-Object { -not ($activeServers.id -contains $_)}
+      forEach ($cert in $unaccountedCerts) {
+         Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "git rm Certificates\Credentials\$cert.cer"
+         Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "rm Certificates\Credentials\$cert.cer"
       }
-      if(Test-Path $('C:\DevOps',$d.mR,"dedicated.csv" -join '\')){
-         $activeServers += Import-Csv -Path $('C:\DevOps',$d.mR,"dedicated.csv" -join '\') | Select id
-      }
-      if ($activeServers) {
-         $certs = (Get-ChildItem $("C:\DevOps", $d.mR, "Certificates\Credentials\*cer" -join '\')).BaseName
-         $unaccountedCerts = $certs | Where-Object { -not ($activeServers.id -contains $_)}
-         "="*60 >> C:\DevOps\out.txt
-         $certs -join ", " >> C:\DevOps\out.txt
-         $unaccountedCerts -join ", " >> C:\DevOps\out.txt
-         forEach ($cert in $unaccountedCerts) {
-            "git rm Certificates\Credentials\$cert.cer" >> c:\DevOps\out.txt
-            Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "rm Certificates\Credentials\$cert.cer"
-         }
+      if($unaccountedCerts){
+         Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -am `"Removing unaccounted certs`""
+         Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
       }
    }
+   #}
 }
 chdir $("C:\DevOps", $d.mR -join '\')
 Start-Service Browser
