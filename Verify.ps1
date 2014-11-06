@@ -165,7 +165,6 @@ Function Install-Certs {
 }
 
 Function Remove-UnsedCerts {
-   #if( Test-rsCloud ) {
    $activeServers = @()
    if($d.ContainsKey("rs_username") -and $d.ContainsKey("rs_apikey") ){
       $activeServers += Get-rsDetailsServers | ? {$_.metadata -match "rax_dsc_config"} | Select -Property id
@@ -185,7 +184,6 @@ Function Remove-UnsedCerts {
          Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
       }
    }
-   #}
 }
 chdir $("C:\DevOps", $d.mR -join '\')
 Start-Service Browser
