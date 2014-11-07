@@ -12,6 +12,7 @@
       }
    }
 }
+
 $Node = $env:COMPUTERNAME
 chdir C:\Windows\Temp
 initDSC -Ensure "present" -Node $Node
