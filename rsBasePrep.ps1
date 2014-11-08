@@ -140,7 +140,7 @@ Function Install-TempDSC {
    ##################################################################################################################################
    #                                             Function - Download rsGit Move & Run rsPlatform (pull server)
    ##################################################################################################################################
-Function Get-TempPullDSC {
+<#Function Get-TempPullDSC {
    if($role -eq "Pull") {
       Start-Service Browser
       $isDone = $false
@@ -231,7 +231,7 @@ Function Get-TempPullDSC {
       }
       while ($isDone -eq $false)
    }
-} 
+} #>
    
    ##################################################################################################################################
    #                                             Function - Install DSC (all nodes)
@@ -572,7 +572,6 @@ switch ($stage) {
    1
    {
       Set-Service Browser -StartupType Manual
-      Disable-MSN
       Test-rsRackConnect
       Test-rsManaged
       Load-Globals
@@ -583,7 +582,6 @@ switch ($stage) {
       Push-rsSSHKey
       Update-rsGitConfig -scope system -attribute user.email -value $env:COMPUTERNAME@localhost.local
       Update-rsGitConfig -scope system -attribute user.name -value $env:COMPUTERNAME
-      Get-TempPullDSC
       Load-Globals
       Disable-TOE
       tzutil /s "Central Standard Time"
