@@ -267,7 +267,7 @@ Function Install-DSC {
       Install-WindowsFeature Web-Server
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "IIS installation Complete."
       ### Install SSL certificates on pullserver
-      Install-Certs
+      Install-rsCertificates
       ### Copy required files for PSDDesiredStateCofngiuration website
       if((Test-Path -Path "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\bin") -eq $false) {
          New-Item -ItemType directory -Path "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\bin"
