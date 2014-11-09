@@ -137,101 +137,6 @@ Function Install-TempDSC {
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Temporary DSC intallation complete"
    }
 }
-   ##################################################################################################################################
-   #                                             Function - Download rsGit Move & Run rsPlatform (pull server)
-   ##################################################################################################################################
-Function Get-TempPullDSC {
-   if($role -eq "Pull") {
-      Start-Service Browser
-      $isDone = $false
-      $timeOut = 0
-      do {
-         if($timeOut -ge 10) { 
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
-            break 
-         }
-         try {
-            chdir "C:\Program Files\WindowsPowerShell\Modules\"
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning https://github.com/rsWinAutomationSupport/rsGit.git"
-            #### Temporary changed to forked rsGit for testing
-            #Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone  $("https://github.com", $d.gMO, "rsGit.git" -join '/')"
-            ####
-            Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone --branch master https://github.com/rsWinAutomationSupport/rsGit.git"
-            #Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone --branch $($d.ProvBr) $("https://github.com", $d.git_username, "rsGit.git" -join '/')"
-            if(Test-Path -Path "C:\Program Files\WindowsPowerShell\Modules\rsGit") {
-               $isDone = $true
-            }
-            else {
-               Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone https://github.com/rsWinAutomationSupport/rsGit.git, sleeping for 5 seconds then trying again. `n $($_.Exception.Message)"
-               $timeOut += 1
-               Start-Sleep -Seconds 5
-            }
-         }
-         catch {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone https://github.com/rsWinAutomationSupport/rsGit.git, sleeping for 5 seconds then trying again. `n $($_.Exception.Message)"
-            $timeOut += 1
-            Start-Sleep -Seconds 5
-         }
-      }
-      while ($isDone -eq $false)
-      
-      $isDone = $false
-      $timeOut = 0
-      do {
-         if($timeOut -ge 10) { 
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
-            break 
-         }
-         try {
-            chdir "C:\DevOps"
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning $(("git@github.com:", $d.git_username -join ''), ($($d.mR), ".git" -join '') -join '/')"
-            Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone --branch $($d.branch_rsConfigs) $((('git@github.com:', $($d.git_username) -join ''), ($($d.mR), '.git' -join '')) -join '/')"
-            if(Test-Path -Path $("C:\DevOps", $($d.mR) -join '\')) {
-               $isDone = $true
-            }
-            else {
-               Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone $(("git@github.com:", $d.git_username -join ''), ($($d.mR), ".git" -join '') -join '/'), sleeping for 5 seconds then trying again. `n $($_.Exception.Message)"
-               $timeOut += 1
-            }
-         }
-         catch {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone $(("git@github.com:", $d.git_username -join ''), ($($d.mR), ".git" -join '') -join '/'), sleeping for 5 seconds then trying again. `n $($_.Exception.Message)"
-            $timeOut += 1
-            Start-Sleep -Seconds 5
-         }
-      }
-      while ($isDone -eq $false)
-      Stop-Service Browser
-      if((Test-Path -Path "C:\Program Files\WindowsPowerShell\DscService\Modules" -PathType Container) -eq $false) {
-         New-Item -Path "C:\Program Files\WindowsPowerShell\DscService\Modules" -ItemType Container
-      }
-      Copy-Item $("C:\DevOps", $d.mR, "rsPlatform" -join '\') "C:\Program Files\WindowsPowerShell\Modules" -Recurse
-   }
-   else {
-      $isDone = $false
-      $timeOut = 0
-      do {
-         if($timeOut -ge 5) { 
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
-            break 
-         }
-         try {
-            chdir "C:\DevOps"
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning $($d.mR , ".git" -join '') $((("https://", "##REDACTED_GITHUB_APIKEY##", "@github.com" -join ''), $d.git_username, $($d.mR , ".git" -join '')) -join '/')"
-            Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone --branch $($d.branch_rsConfigs) $((("https://", $d.git_Oauthtoken, "@github.com" -join ''), $d.git_username, $($d.mR , ".git" -join '')) -join '/')"
-            if(Test-Path -Path $("C:\DevOps", $($d.mR) -join '\')) {
-               $isDone = $true
-            }
-         }
-         catch {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to Clone $($d.mR , ".git" -join '') $((("https://", "##REDACTED_GITHUB_APIKEY##", "@github.com" -join ''), $d.git_username, $($d.mR , ".git" -join '')) -join '/'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
-            $timeOut += 1
-            Start-Sleep -Seconds 5
-         }
-      }
-      while ($isDone -eq $false)
-   }
-} 
    
    ##################################################################################################################################
    #                                             Function - Install DSC (all nodes)
@@ -267,7 +172,7 @@ Function Install-DSC {
       Install-WindowsFeature Web-Server
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "IIS installation Complete."
       ### Install SSL certificates on pullserver
-      Install-Certs
+      Install-rsCertificates
       ### Copy required files for PSDDesiredStateCofngiuration website
       if((Test-Path -Path "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\bin") -eq $false) {
          New-Item -ItemType directory -Path "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\bin"
@@ -572,7 +477,6 @@ switch ($stage) {
    1
    {
       Set-Service Browser -StartupType Manual
-      Disable-MSN
       Test-rsRackConnect
       Test-rsManaged
       Load-Globals
@@ -583,7 +487,6 @@ switch ($stage) {
       Push-rsSSHKey
       Update-rsGitConfig -scope system -attribute user.email -value $env:COMPUTERNAME@localhost.local
       Update-rsGitConfig -scope system -attribute user.name -value $env:COMPUTERNAME
-      Get-TempPullDSC
       Load-Globals
       Disable-TOE
       tzutil /s "Central Standard Time"

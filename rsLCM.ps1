@@ -47,7 +47,7 @@ if(Test-rsCloud) {
    $ObjectGuid = (Get-rsXenInfo -value name) -replace "instance-", ""
 }
 else {
-   $ObjectGuid = (Get-rsDedicatedInfo -Value $env:COMPUTERNAME).id
+   $ObjectGuid = ((Get-rsDedicatedInfo -Value $env:COMPUTERNAME) | ? { $_.name -eq $env:COMPUTERNAME } ).id
 }
 
 if((Get-rsRole -Value $env:COMPUTERNAME) -eq "pull") {
