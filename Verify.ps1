@@ -122,7 +122,7 @@ Function Install-Certs {
    Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
 }
 
-Function Remove-UnsedCerts {
+Function Remove-UnusedCerts {
    $activeServers = @()
    if($d.ContainsKey("rs_username") -and $d.ContainsKey("rs_apikey") ){
       $activeServers += Get-rsDetailsServers | ? {$_.metadata -match "rax_dsc_config"} | Select -Property id
@@ -162,7 +162,7 @@ if((Get-rsRole -Value $env:COMPUTERNAME) -eq "pull") {
       $Global:isManaged = $false
    }
    Check-Hash
-   Remove-UnsedCerts
+   Remove-UnusedCerts
 }
 else {
    Check-Hosts
