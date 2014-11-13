@@ -128,7 +128,7 @@ Function Set-GitPath {
 Function Install-TempDSC {
    if((Get-rsRole -Value $env:COMPUTERNAME) -eq "Pull") {
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing inital temporary DSC configuration C:\DevOps\rsProvisioning\initDSC.ps1"
-      Invoke-Command -ScriptBlock {Start -Wait -NoNewWindow PowerShell.exe "C:\DevOps\rsProvisioning\initDSC.ps1"} -ArgumentList "-ExecutionPolicy Bypass -Force"
+      Invoke-Expression "C:\DevOps\rsProvisioning\initDSC.ps1"
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Temporary DSC intallation complete"
    }
 }
@@ -185,7 +185,7 @@ Function Install-DSC {
       do {
          Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing DSC $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')"
          taskkill /F /IM WmiPrvSE.exe
-         Invoke-Command -ScriptBlock { start -Wait -NoNewWindow PowerShell.exe $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
+         Invoke-Expression $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')
       }
       while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "PullServer DSC installation Complete."
@@ -478,8 +478,6 @@ switch ($stage) {
       Write-Log -value "Starting Stage 1"
       Set-GitPath
       Update-rsKnownHostsFile
-      New-rsSSHKey
-      Push-rsSSHKey
       Update-rsGitConfig -scope system -attribute user.email -value $env:COMPUTERNAME@localhost.local
       Update-rsGitConfig -scope system -attribute user.name -value $env:COMPUTERNAME
       Load-Globals
