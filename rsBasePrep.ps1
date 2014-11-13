@@ -477,7 +477,6 @@ switch ($stage) {
       Load-Globals
       Write-Log -value "Starting Stage 1"
       Set-GitPath
-      Update-rsKnownHostsFile
       Update-rsGitConfig -scope system -attribute user.email -value $env:COMPUTERNAME@localhost.local
       Update-rsGitConfig -scope system -attribute user.name -value $env:COMPUTERNAME
       Load-Globals
