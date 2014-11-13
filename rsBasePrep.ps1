@@ -479,6 +479,7 @@ switch ($stage) {
       Set-GitPath
       Update-rsGitConfig -scope system -attribute user.email -value $env:COMPUTERNAME@localhost.local
       Update-rsGitConfig -scope system -attribute user.name -value $env:COMPUTERNAME
+
       Load-Globals
       Disable-TOE
       tzutil /s "Central Standard Time"
