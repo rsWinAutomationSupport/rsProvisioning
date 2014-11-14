@@ -162,7 +162,7 @@ Function Install-DSC {
    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "LCM installation complete"
    ### Pullserver specific tasks, install WindowsFeature Web-Service, install SSL certificates then run rsPullServer.ps1 to install DSC
    if((Get-rsRole -Value $env:COMPUTERNAME) -eq "Pull") {
-      Set-Content -Path $("C:\DevOps", "rsPullServer.hash" -join '\') -Value (Get-FileHash -Path $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')).hash
+      Set-rsHash -file $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\') -hash "C:\DevOps\rsPullServer.hash"
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing WindowsFeature Web-Server"
       Install-WindowsFeature Web-Server
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "IIS installation Complete."
