@@ -6,9 +6,7 @@ else {
 }
 Import-Module rsCommon
 . (Get-rsSecrets)
-if(Test-Path -Path "C:\DevOps\dedicated.csv") {
-   $DedicatedData = Import-Csv -Path "C:\DevOps\dedicated.csv"
-}
+$DedicatedData = Get-rsDedicatedInfo
 if(Test-Path -Path $("C:\DevOps", $d.mR, 'PullServerinfo.ps1' -join '\')) {
    . "$("C:\DevOps", $d.mR, 'PullServerinfo.ps1' -join '\')"
 }
@@ -128,7 +126,12 @@ Function Set-GitPath {
 Function Install-TempDSC {
    if((Get-rsRole -Value $env:COMPUTERNAME) -eq "Pull") {
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing inital temporary DSC configuration C:\DevOps\rsProvisioning\initDSC.ps1"
-      Invoke-Expression "C:\DevOps\rsProvisioning\initDSC.ps1"
+      try{
+          Invoke-Expression "C:\DevOps\rsProvisioning\initDSC.ps1"
+      }
+      catch {
+        Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Error initDSC.ps1`n$($_.Exception.message)"
+      }
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Temporary DSC intallation complete"
    }
 }
@@ -142,7 +145,7 @@ Function Install-DSC {
       Invoke-Expression "C:\DevOps\rsProvisioning\rsLCM.ps1"
    }
    catch {
-      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Error in LCM`n$($_.Exception.message)"
+      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Error in rsLCM.ps1`n$($_.Exception.message)"
    }
    if((Get-rsRole -Value $env:COMPUTERNAME) -ne "Pull") {
       $i = 0
@@ -180,15 +183,20 @@ Function Install-DSC {
       }
       ### Run rsPullServer.ps1 to install DSC on pullserver
       if(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof") {
-         Remove-Item -Path "C:\Windows\System32\Configuration\Current.mof" -Force
+         Remove-Item -Path "C:\Windows\System32\Configuration\Current.mof" -Recurse -Force
       }
       do {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing DSC $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')"
-         taskkill /F /IM WmiPrvSE.exe
-         Invoke-Expression $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')
+          Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Installing DSC $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')"
+          taskkill /F /IM WmiPrvSE.exe
+          try{
+              Invoke-Expression $('C:\DevOps', $d.mR, 'rsPullServer.ps1' -join '\')
+          }
+          catch {
+              Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Error in rsPullServer.ps1`n$($_.Exception.message)"
+          }
       }
       while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
-      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "PullServer DSC installation Complete."
+      Write-EventLog -LogName DevOps -Source Baseprep -EntryType Information -EventId 1000 -Message "PullServer DSC installation Complete."
    }
    return
 }
@@ -391,7 +399,7 @@ Function Update-XenTools {
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "XenTools installation complete."
    }
    if($osVersion -gt "6.3") {
-      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "OS verision is $osVersion no XenTools installation needed."
+      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "OS version is $osVersion. No XenTools installation needed."
       ### If osversion 2012 R2 no xentools install needed and no reboot needed, setting stage to 3 and returning to start stage 3
       Set-Stage -value 3
       Restart-Computer -Force
@@ -424,7 +432,7 @@ Function Update-HostFile {
       }
       $hostContent = $pullServerIP + "`t`t`t" + $pullServerName
       Add-Content -Path "C:\Windows\System32\Drivers\etc\hosts" -Value $hostContent -Force
-      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "PullServerRegion $pullServerRegion ServerRegion $(Get-rsRegion -Value $env:COMPUTERNAME)"
+      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "PullServerRegion $pullServerRegion`nServerRegion $(Get-rsRegion -Value $env:COMPUTERNAME)"
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Adding $hostContent to HostsFile"
       $hostContent = ((Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -like '10.*').IPAddress + "`t`t`t" + $env:COMPUTERNAME)
       Add-Content -Path "C:\Windows\System32\Drivers\etc\hosts" -Value $hostContent -Force
@@ -440,6 +448,7 @@ Function Update-HostFile {
 Function Clean-Up {
    if(Test-Path -Path "C:\DevOps\xs-tools-6.2.0") { Remove-Item "C:\DevOps\xs-tools-6.2.0" -Recurse -Force }
    if(Test-Path -Path "C:\DevOps\xs-tools-6.2.0.zip") { Remove-Item "C:\DevOps\xs-tools-6.2.0.zip" -Recurse -Force }
+   if(Test-Path -Path "C:\DevOps\Git-Windows-Latest.exe") { Remove-Item "C:\DevOps\Git-Windows-Latest.exe" -Recurse -Force }
    schtasks.exe /Delete /TN BasePrep /F
 }
    
@@ -457,7 +466,7 @@ if((Test-Path -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WinDevOps") -eq $fals
    $osVersion = (Get-WmiObject -class Win32_OperatingSystem).Version
    $currentDate = (get-date).tostring("mm_dd_yyyy-hh_mm_s")
    $wmfVersion = $PSVersionTable.PSVersion.Major
-$netVersion = (Get-ItemProperty -Path "hklm:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full").Version
+   $netVersion = (Get-ItemProperty -Path "hklm:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full").Version
    ##################################################################################################################################
    
    
@@ -479,10 +488,8 @@ switch ($stage) {
       Set-GitPath
       Update-rsGitConfig -scope system -attribute user.email -value $env:COMPUTERNAME@localhost.local
       Update-rsGitConfig -scope system -attribute user.name -value $env:COMPUTERNAME
-
       Load-Globals
       Disable-TOE
-      tzutil /s "Central Standard Time"
       Create-ScheduledTask
       Install-Net45
       Install-WMF4

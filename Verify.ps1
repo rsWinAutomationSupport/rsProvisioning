@@ -54,14 +54,13 @@ Function Check-Hash {
    }
    else
    {
-        Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "File C:\DevOps\rsPullServer.hash was not found or hash mismatch, creating hash file and executing rsPullServer.ps1"
+        Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "File C:\DevOps\rsPullServer.hash was not found or hash mismatch, executing rsPullServer.ps1 & creating hash file"
         Invoke-DSC
         Set-rsHash -file $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\') -hash "C:\DevOps\rsPullServer.hash"
    }
 }
 ### Client tasks
 Function Check-Hosts {
-   Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Pulling current configurations from github"
    Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Checking hosts file entry for pullserver"
    $serverRegion = Get-rsRegion -Value $env:COMPUTERNAME
    $pullServerRegion = $pullServerInfo.region
@@ -134,6 +133,7 @@ Function Remove-UnusedCerts {
       }
       if($unaccountedCerts){
          Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -am `"Removing unaccounted certs`""
+         Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.br)"
          Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
       }
    }
