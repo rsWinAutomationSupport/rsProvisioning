@@ -186,7 +186,7 @@ Function Install-DSC {
          Remove-Item -Path "C:\Windows\System32\Configuration\Current.mof" -Recurse -Force
       }
       do {
-          Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Installing DSC $('C:\DevOps', $d.mR, 'rsPullServer.ps1' -join '\')"
+          Write-EventLog -LogName DevOps -Source Baseprep -EntryType Information -EventId 1000 -Message "Installing DSC $('C:\DevOps', $d.mR, 'rsPullServer.ps1' -join '\')"
           taskkill /F /IM WmiPrvSE.exe
           try{
               Invoke-Expression $('C:\DevOps', $d.mR, 'rsPullServer.ps1' -join '\')
