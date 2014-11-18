@@ -393,7 +393,7 @@ Function Get-TempPullDSC {
          try {
             chdir $($d.wD)
             Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning $(("git@github.com:", $d.gCA -join ''), ($($d.mR), ".git" -join '') -join '/')"
-            Start -Wait $gitExe -ArgumentList "clone  $((('git@github.com:', $($d.gCA) -join ''), ($($d.mR), '.git' -join '')) -join '/')"
+            Start -Wait $gitExe -ArgumentList "clone --branch $d.br $((('git@github.com:', $($d.gCA) -join ''), ($($d.mR), '.git' -join '')) -join '/')"
             if(Test-Path -Path $($d.wD, $($d.mR) -join '\')) {
                $isDone = $true
             }
