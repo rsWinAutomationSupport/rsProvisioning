@@ -503,7 +503,6 @@ switch ($stage) {
       Install-TempDSC
       Create-PullServerInfo
       Update-HostFile
-      Install-rsCertificates
       Install-DSC
       Set-Stage -value 4
       Restart-Computer -Force
