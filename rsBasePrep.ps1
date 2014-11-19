@@ -185,18 +185,7 @@ Function Install-DSC {
       if(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof") {
          Remove-Item -Path "C:\Windows\System32\Configuration\Current.mof" -Recurse -Force
       }
-      do {
-          Write-EventLog -LogName DevOps -Source Baseprep -EntryType Information -EventId 1000 -Message "Installing DSC $('C:\DevOps', $d.mR, 'rsPullServer.ps1' -join '\')"
-          taskkill /F /IM WmiPrvSE.exe
-          try{
-              Invoke-Expression $('C:\DevOps', $d.mR, 'rsPullServer.ps1' -join '\')
-          }
-          catch {
-              Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Error in rsPullServer.ps1`n$($_.Exception.message)"
-          }
-      }
-      while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
-      Write-EventLog -LogName DevOps -Source Baseprep -EntryType Information -EventId 1000 -Message "PullServer DSC installation Complete."
+      Invoke-DSC
    }
    return
 }

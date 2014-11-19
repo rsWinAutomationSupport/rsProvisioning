@@ -24,21 +24,6 @@ if((Test-Path -Path "C:\Windows\System32\Configuration\Pending.mof") -and ((Get-
 ## to start a new DSC configuration on the PullServer
 ### will pull before running rsPullServer.ps1
 
-Function Invoke-DSC
-{
-    do {
-        Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Installing DSC $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')"
-        taskkill /F /IM WmiPrvSE.exe
-        try{
-            Invoke-Expression $('C:\DevOps', $d.mR, 'rsPullServer.ps1' -join '\')
-        }
-        catch {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Error in rsPullServer`n$($_.Exception.message)"
-        }
-    }
-    while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
-    Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "PullServer DSC installation Complete." 
-}
 Function Check-Hash {
    Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Checking rsPullServer hash"
    if(Test-rsHash -file $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\') -hash "C:\DevOps\rsPullServer.hash" )
