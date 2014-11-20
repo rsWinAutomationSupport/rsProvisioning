@@ -496,11 +496,11 @@ switch ($stage) {
    3
    {
       Load-Globals
-      Disable-MSN
+      #Disable-MSN
       Disable-TOE
       Set-DataDrive
       New-NetFirewallRule -DisplayName "WINRM" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 5985-5986
-      set-item WSMan:\localhost\Client\TrustedHosts * -force
+      Set-Item WSMan:\localhost\Client\TrustedHosts * -force
       Install-TempDSC
       Create-PullServerInfo
       Update-HostFile
