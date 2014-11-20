@@ -148,6 +148,7 @@ Function Install-DSC {
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Error in rsLCM.ps1`n$($_.Exception.message)"
    }
    if((Get-rsRole -Value $env:COMPUTERNAME) -ne "Pull") {
+      powershell.exe certutil -addstore -f root $("C:\DevOps", $d.mR, "Certificates\PullServer.crt" -join '\')      
       $i = 0
       do {
          if ( $((Get-WinEvent Microsoft-Windows-DSC/Operational | Select -First 1).id) -eq "4104" ) {
