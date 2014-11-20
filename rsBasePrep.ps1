@@ -68,9 +68,10 @@ Function Load-Globals {
 ##################################################################################################################################
 #                                             Function - Disable Client For Microsoft Networks
 ##################################################################################################################################
-Function Disable-MSN {
+Function Set-MSN {
+param([bool][ValidateNotNull()]$Enabled)
    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Disabling MSN on all adapters"
-   (Get-NetAdapter).Name | % {Set-NetAdapterBinding -Name $_ -DisplayName "Client for Microsoft Networks" -Enabled $false}
+   (Get-NetAdapter).Name | % {Set-NetAdapterBinding -Name $_ -DisplayName "Client for Microsoft Networks" -Enabled $Enabled}
    return
 }
 
@@ -162,6 +163,7 @@ Function Install-DSC {
          Start-Sleep -Seconds 10
       }
       while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
+      Set-MSN -Enabled $true
    }
    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "LCM installation complete"
    ### Pullserver specific tasks, install WindowsFeature Web-Service, install SSL certificates then run rsPullServer.ps1 to install DSC
@@ -496,7 +498,7 @@ switch ($stage) {
    3
    {
       Load-Globals
-      #Disable-MSN
+      Set-MSN -Enabled $false
       Disable-TOE
       Set-DataDrive
       New-NetFirewallRule -DisplayName "WINRM" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 5985-5986
