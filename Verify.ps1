@@ -149,6 +149,8 @@ Function Remove-UnsedCerts {
       }
       if($unaccountedCerts){
          Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -am `"Removing unaccounted certs`""
+         Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "fetch origin $($d.branch_rsConfigs)"
+         Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "merge remotes/origin/$($d.branch_rsConfigs)"
          Start -Wait -NoNewWindow "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.br)"
       }
    }
@@ -156,7 +158,8 @@ Function Remove-UnsedCerts {
 chdir $("C:\DevOps", $d.mR -join '\')
 Start-Service Browser
 Write-EventLog -LogName DevOps -Source Verify -EntryType Information -EventId 1000 -Message "Updating pullserverInfo.ps1 and pushing to github"
-Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.branch_rsConfigs)"
+Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "fetch origin $($d.branch_rsConfigs)"
+Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "merge remotes/origin/$($d.branch_rsConfigs)"
 Stop-Service Browser
 if((Get-rsRole -Value $env:COMPUTERNAME) -eq "pull") {
    $Global:catalog = Get-rsServiceCatalog
