@@ -6,9 +6,7 @@ else {
 }
 Import-Module rsCommon
 . (Get-rsSecrets)
-if(Test-Path -Path "C:\DevOps\dedicated.csv") {
-   $DedicatedData = Import-Csv -Path "C:\DevOps\dedicated.csv"
-}
+$DedicatedData = Get-rsDedicatedInfo
 if(Test-Path -Path $("C:\DevOps", $d.mR, 'PullServerinfo.ps1' -join '\')) {
    . "$("C:\DevOps", $d.mR, 'PullServerinfo.ps1' -join '\')"
 }
@@ -70,9 +68,10 @@ Function Load-Globals {
 ##################################################################################################################################
 #                                             Function - Disable Client For Microsoft Networks
 ##################################################################################################################################
-Function Disable-MSN {
+Function Set-MSN {
+param([bool][ValidateNotNull()]$Enabled)
    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Disabling MSN on all adapters"
-   (Get-NetAdapter).Name | % {Set-NetAdapterBinding -Name $_ -DisplayName "Client for Microsoft Networks" -Enabled $false}
+   (Get-NetAdapter).Name | % {Set-NetAdapterBinding -Name $_ -DisplayName "Client for Microsoft Networks" -Enabled $Enabled}
    return
 }
 
@@ -93,12 +92,7 @@ Function Create-PullServerInfo {
       Add-Content -Path $path -Value "`"pullServerName`" = `"$pullServerName`""
       Add-Content -Path $path -Value "`"pullServerPrivateIp`" = `"$pullServerPrivateIp`""
       Add-Content -Path $path -Value "`"pullServerPublicIp`" = `"$pullServerPublicIp`""
-      if(Test-rsCloud){
-         Add-Content -Path $path -Value "`"region`" = `$$(Get-rsRegion -Value $env:COMPUTERNAME)"
-      }
-      else {
-         Add-Content -Path $path -Value "`"region`" = `"$(Get-rsRegion -Value $env:COMPUTERNAME)`""
-      }
+      Add-Content -Path $path -Value "`"region`" = `"$(Get-rsRegion -Value $env:COMPUTERNAME)`""
       Add-Content -Path $path -Value "`"isRackConnect`" = `$$($isRackConnect.toString().toLower())"
       Add-Content -Path $path -Value "`"isManaged`" = `$$($isManaged.toString().toLower())"
       Add-Content -Path $path -Value "`"defaultRegion`" = `"$defaultRegion`""
@@ -114,7 +108,8 @@ Function Create-PullServerInfo {
          Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $trackedFile"
       }
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -a -m `"$pullServerName pushing PullServerInfo.ps1`""
-      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "pull origin $($d.branch_rsConfigs)"
+      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "fetch origin $($d.branch_rsConfigs)"
+      Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "merge remotes/origin/$($d.branch_rsConfigs)"
       Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.branch_rsConfigs)"
       Stop-Service Browser
    }
@@ -133,105 +128,15 @@ Function Set-GitPath {
 Function Install-TempDSC {
    if((Get-rsRole -Value $env:COMPUTERNAME) -eq "Pull") {
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing inital temporary DSC configuration C:\DevOps\rsProvisioning\initDSC.ps1"
-      Invoke-Command -ScriptBlock {Start -Wait -NoNewWindow PowerShell.exe "C:\DevOps\rsProvisioning\initDSC.ps1"} -ArgumentList "-ExecutionPolicy Bypass -Force"
+      try{
+          Invoke-Expression "C:\DevOps\rsProvisioning\initDSC.ps1"
+      }
+      catch {
+        Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Error initDSC.ps1`n$($_.Exception.message)"
+      }
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Temporary DSC intallation complete"
    }
 }
-   ##################################################################################################################################
-   #                                             Function - Download rsGit Move & Run rsPlatform (pull server)
-   ##################################################################################################################################
-Function Get-TempPullDSC {
-   if($role -eq "Pull") {
-      Start-Service Browser
-      $isDone = $false
-      $timeOut = 0
-      do {
-         if($timeOut -ge 10) { 
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
-            break 
-         }
-         try {
-            chdir "C:\Program Files\WindowsPowerShell\Modules\"
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning https://github.com/rsWinAutomationSupport/rsGit.git"
-            #### Temporary changed to forked rsGit for testing
-            #Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone  $("https://github.com", $d.gMO, "rsGit.git" -join '/')"
-            ####
-            Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone --branch master https://github.com/rsWinAutomationSupport/rsGit.git"
-            #Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone --branch $($d.ProvBr) $("https://github.com", $d.git_username, "rsGit.git" -join '/')"
-            if(Test-Path -Path "C:\Program Files\WindowsPowerShell\Modules\rsGit") {
-               $isDone = $true
-            }
-            else {
-               Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone https://github.com/rsWinAutomationSupport/rsGit.git, sleeping for 5 seconds then trying again. `n $($_.Exception.Message)"
-               $timeOut += 1
-               Start-Sleep -Seconds 5
-            }
-         }
-         catch {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone https://github.com/rsWinAutomationSupport/rsGit.git, sleeping for 5 seconds then trying again. `n $($_.Exception.Message)"
-            $timeOut += 1
-            Start-Sleep -Seconds 5
-         }
-      }
-      while ($isDone -eq $false)
-      
-      $isDone = $false
-      $timeOut = 0
-      do {
-         if($timeOut -ge 10) { 
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
-            break 
-         }
-         try {
-            chdir "C:\DevOps"
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning $(("git@github.com:", $d.git_username -join ''), ($($d.mR), ".git" -join '') -join '/')"
-            Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone --branch $($d.branch_rsConfigs) $((('git@github.com:', $($d.git_username) -join ''), ($($d.mR), '.git' -join '')) -join '/')"
-            if(Test-Path -Path $("C:\DevOps", $($d.mR) -join '\')) {
-               $isDone = $true
-            }
-            else {
-               Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone $(("git@github.com:", $d.git_username -join ''), ($($d.mR), ".git" -join '') -join '/'), sleeping for 5 seconds then trying again. `n $($_.Exception.Message)"
-               $timeOut += 1
-            }
-         }
-         catch {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to clone $(("git@github.com:", $d.git_username -join ''), ($($d.mR), ".git" -join '') -join '/'), sleeping for 5 seconds then trying again. `n $($_.Exception.Message)"
-            $timeOut += 1
-            Start-Sleep -Seconds 5
-         }
-      }
-      while ($isDone -eq $false)
-      Stop-Service Browser
-      if((Test-Path -Path "C:\Program Files\WindowsPowerShell\DscService\Modules" -PathType Container) -eq $false) {
-         New-Item -Path "C:\Program Files\WindowsPowerShell\DscService\Modules" -ItemType Container
-      }
-      Copy-Item $("C:\DevOps", $d.mR, "rsPlatform" -join '\') "C:\Program Files\WindowsPowerShell\Modules" -Recurse
-   }
-   else {
-      $isDone = $false
-      $timeOut = 0
-      do {
-         if($timeOut -ge 5) { 
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Retry threshold reached, stopping retry loop."
-            break 
-         }
-         try {
-            chdir "C:\DevOps"
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Cloning $($d.mR , ".git" -join '') $((("https://", "##REDACTED_GITHUB_APIKEY##", "@github.com" -join ''), $d.git_username, $($d.mR , ".git" -join '')) -join '/')"
-            Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "clone --branch $($d.branch_rsConfigs) $((("https://", $d.git_Oauthtoken, "@github.com" -join ''), $d.git_username, $($d.mR , ".git" -join '')) -join '/')"
-            if(Test-Path -Path $("C:\DevOps", $($d.mR) -join '\')) {
-               $isDone = $true
-            }
-         }
-         catch {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Warning -EventId 1000 -Message "Failed to Clone $($d.mR , ".git" -join '') $((("https://", "##REDACTED_GITHUB_APIKEY##", "@github.com" -join ''), $d.git_username, $($d.mR , ".git" -join '')) -join '/'), sleeping for 30 seconds then trying again. `n $($_.Exception.Message)"
-            $timeOut += 1
-            Start-Sleep -Seconds 5
-         }
-      }
-      while ($isDone -eq $false)
-   }
-} 
    
    ##################################################################################################################################
    #                                             Function - Install DSC (all nodes)
@@ -242,9 +147,10 @@ Function Install-DSC {
       Invoke-Expression "C:\DevOps\rsProvisioning\rsLCM.ps1"
    }
    catch {
-      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Error in LCM`n$($_.Exception.message)"
+      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Error in rsLCM.ps1`n$($_.Exception.message)"
    }
    if((Get-rsRole -Value $env:COMPUTERNAME) -ne "Pull") {
+      powershell.exe certutil -addstore -f root $("C:\DevOps", $d.mR, "Certificates\PullServer.crt" -join '\')      
       $i = 0
       do {
          if ( $((Get-WinEvent Microsoft-Windows-DSC/Operational | Select -First 1).id) -eq "4104" ) {
@@ -258,16 +164,17 @@ Function Install-DSC {
          Start-Sleep -Seconds 10
       }
       while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
+      Set-MSN -Enabled $true
    }
    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "LCM installation complete"
    ### Pullserver specific tasks, install WindowsFeature Web-Service, install SSL certificates then run rsPullServer.ps1 to install DSC
    if((Get-rsRole -Value $env:COMPUTERNAME) -eq "Pull") {
-      Set-Content -Path $("C:\DevOps", "rsPullServer.hash" -join '\') -Value (Get-FileHash -Path $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')).hash
+      Set-rsHash -file $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\') -hash "C:\DevOps\rsPullServer.hash"
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing WindowsFeature Web-Server"
       Install-WindowsFeature Web-Server
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "IIS installation Complete."
       ### Install SSL certificates on pullserver
-      Install-Certs
+      Install-rsCertificates
       ### Copy required files for PSDDesiredStateCofngiuration website
       if((Test-Path -Path "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\bin") -eq $false) {
          New-Item -ItemType directory -Path "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\bin"
@@ -280,15 +187,9 @@ Function Install-DSC {
       }
       ### Run rsPullServer.ps1 to install DSC on pullserver
       if(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof") {
-         Remove-Item -Path "C:\Windows\System32\Configuration\Current.mof" -Force
+         Remove-Item -Path "C:\Windows\System32\Configuration\Current.mof" -Recurse -Force
       }
-      do {
-         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing DSC $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')"
-         taskkill /F /IM WmiPrvSE.exe
-         Invoke-Command -ScriptBlock { start -Wait -NoNewWindow PowerShell.exe $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\')} -ArgumentList "-ExecutionPolicy Bypass -Force"
-      }
-      while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
-      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "PullServer DSC installation Complete."
+      Invoke-DSC
    }
    return
 }
@@ -491,7 +392,7 @@ Function Update-XenTools {
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "XenTools installation complete."
    }
    if($osVersion -gt "6.3") {
-      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "OS verision is $osVersion no XenTools installation needed."
+      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "OS version is $osVersion. No XenTools installation needed."
       ### If osversion 2012 R2 no xentools install needed and no reboot needed, setting stage to 3 and returning to start stage 3
       Set-Stage -value 3
       Restart-Computer -Force
@@ -524,7 +425,7 @@ Function Update-HostFile {
       }
       $hostContent = $pullServerIP + "`t`t`t" + $pullServerName
       Add-Content -Path "C:\Windows\System32\Drivers\etc\hosts" -Value $hostContent -Force
-      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "PullServerRegion $pullServerRegion ServerRegion $(Get-rsRegion -Value $env:COMPUTERNAME)"
+      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "PullServerRegion $pullServerRegion`nServerRegion $(Get-rsRegion -Value $env:COMPUTERNAME)"
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Adding $hostContent to HostsFile"
       $hostContent = ((Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -like '10.*').IPAddress + "`t`t`t" + $env:COMPUTERNAME)
       Add-Content -Path "C:\Windows\System32\Drivers\etc\hosts" -Value $hostContent -Force
@@ -540,6 +441,7 @@ Function Update-HostFile {
 Function Clean-Up {
    if(Test-Path -Path "C:\DevOps\xs-tools-6.2.0") { Remove-Item "C:\DevOps\xs-tools-6.2.0" -Recurse -Force }
    if(Test-Path -Path "C:\DevOps\xs-tools-6.2.0.zip") { Remove-Item "C:\DevOps\xs-tools-6.2.0.zip" -Recurse -Force }
+   if(Test-Path -Path "C:\DevOps\Git-Windows-Latest.exe") { Remove-Item "C:\DevOps\Git-Windows-Latest.exe" -Recurse -Force }
    schtasks.exe /Delete /TN BasePrep /F
 }
    
@@ -557,7 +459,7 @@ if((Test-Path -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WinDevOps") -eq $fals
    $osVersion = (Get-WmiObject -class Win32_OperatingSystem).Version
    $currentDate = (get-date).tostring("mm_dd_yyyy-hh_mm_s")
    $wmfVersion = $PSVersionTable.PSVersion.Major
-$netVersion = (Get-ItemProperty -Path "hklm:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full").Version
+   $netVersion = (Get-ItemProperty -Path "hklm:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full").Version
    ##################################################################################################################################
    
    
@@ -572,21 +474,15 @@ switch ($stage) {
    1
    {
       Set-Service Browser -StartupType Manual
-      Disable-MSN
       Test-rsRackConnect
       Test-rsManaged
       Load-Globals
       Write-Log -value "Starting Stage 1"
       Set-GitPath
-      Update-rsKnownHostsFile
-      New-rsSSHKey
-      Push-rsSSHKey
       Update-rsGitConfig -scope system -attribute user.email -value $env:COMPUTERNAME@localhost.local
       Update-rsGitConfig -scope system -attribute user.name -value $env:COMPUTERNAME
-      Get-TempPullDSC
       Load-Globals
       Disable-TOE
-      tzutil /s "Central Standard Time"
       Create-ScheduledTask
       Install-Net45
       Install-WMF4
@@ -603,15 +499,14 @@ switch ($stage) {
    3
    {
       Load-Globals
-      Disable-MSN
+      Set-MSN -Enabled $false
       Disable-TOE
       Set-DataDrive
       New-NetFirewallRule -DisplayName "WINRM" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 5985-5986
-      set-item WSMan:\localhost\Client\TrustedHosts * -force
+      Set-Item WSMan:\localhost\Client\TrustedHosts * -force
       Install-TempDSC
       Create-PullServerInfo
       Update-HostFile
-      Install-rsCertificates
       Install-DSC
       Set-Stage -value 4
       Restart-Computer -Force
