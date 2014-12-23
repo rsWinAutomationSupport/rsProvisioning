@@ -381,12 +381,12 @@ Function Update-XenTools {
       
       $path = "C:\DevOps\xs-tools-6.2.0.zip"
       try{
-         Get-rsFile -url "http://1631170f67e7daa50e95-7dd27d3f3410187707440a293c5d1c09.r5.cf1.rackcdn.com/xs-tools-6.2.0.zip" -path $path
+         Get-rsFile -url "http://cc527d412bd9bc2637b1-054807a7b8a5f81313db845a72a4785e.r34.cf1.rackcdn.com/xs-tools-6.2.0.zip" -path $path
       }
       catch {
          Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Failed to Download Xentools. `n $($_.Exception.Message)"
       }
-      [System.IO.Compression.ZipFile]::ExtractToDirectory($path, $destination)
+      [System.IO.Compression.ZipFile]::ExtractToDirectory($path, "$destination\xs-tools-6.2.0\")
       Write-Log -value "Installing Xen Tools 6.2"
       Start -Wait "C:\DevOps\xs-tools-6.2.0\installwizard.msi" -ArgumentList '/qn PATH="C:\Program Files\Citrix\XenTools\"'
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "XenTools installation complete."
