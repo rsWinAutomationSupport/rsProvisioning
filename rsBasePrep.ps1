@@ -27,17 +27,17 @@ Function Load-Globals {
          $Global:catalog = Get-rsServiceCatalog
          $Global:AuthToken = @{"X-Auth-Token"=($Global:catalog.access.token.id)}
          $Global:defaultRegion = $Global:catalog.access.user.'RAX-AUTH:defaultRegion'
-         if(($Global:catalog.access.user.roles | ? name -eq "rack_connect").id.count -gt 0) { $Global:isRackConnect = $true } else { $Global:isRackConnect = $false } 
-         if(($Global:catalog.access.user.roles | ? name -eq "rax_managed").id.count -gt 0) { $Global:isManaged = $true } else { $Global:isManaged = $false } 
+         if(($Global:catalog.access.user.roles | Where-Object name -eq "rack_connect").id.count -gt 0) { $Global:isRackConnect = $true } else { $Global:isRackConnect = $false } 
+         if(($Global:catalog.access.user.roles | Where-Object name -eq "rax_managed").id.count -gt 0) { $Global:isManaged = $true } else { $Global:isManaged = $false } 
       }
       else {
-         $Global:defaultRegion = (Get-rsDedicatedInfo | ? {$_.name -eq $env:COMPUTERNAME}).defaultRegion
-         $Global:isRackConnect = (Get-rsDedicatedInfo | ? {$_.name -eq $env:COMPUTERNAME}).isRackConnect
+         $Global:defaultRegion = (Get-rsDedicatedInfo | Where-Object {$_.name -eq $env:COMPUTERNAME}).defaultRegion
+         $Global:isRackConnect = (Get-rsDedicatedInfo | Where-Object {$_.name -eq $env:COMPUTERNAME}).isRackConnect
          $Global:isManaged = $true
       }
       $Global:pullServerName = $env:COMPUTERNAME
       $Global:pullServerPublicIP = Get-rsAccessIPv4
-      $Global:pullServerPrivateIP = (Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -match '^10\.').IPAddress
+      $Global:pullServerPrivateIP = (Get-NetAdapter | Where-Object status -eq 'up' | Get-NetIPAddress -ea 0 | Where-Object IPAddress -match '^10\.').IPAddress
       $Global:pullServerRegion = Get-rsRegion -Value $env:COMPUTERNAME
    }
    else 
@@ -411,7 +411,7 @@ Function Update-HostFile {
    $pullServerPublicIP = $pullserverInfo.pullserverPublicIp
    $pullServerPrivateIP = $pullServerInfo.pullServerPrivateIp
    if((Get-rsRole -Value $env:COMPUTERNAME) -eq "pull") {
-      $hostContent = ((Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -like '10.*').IPAddress + "`t`t`t" + $env:COMPUTERNAME)
+      $hostContent = ((Get-NetAdapter | Where-Object status -eq 'up' | Get-NetIPAddress -ea 0 | Where-Object IPAddress -like '10.*').IPAddress + "`t`t`t" + $env:COMPUTERNAME)
       Add-Content -Path "C:\Windows\System32\Drivers\etc\hosts" -Value $hostContent -Force
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Adding $hostContent to PullServer Hosts File"
       return
@@ -427,7 +427,7 @@ Function Update-HostFile {
       Add-Content -Path "C:\Windows\System32\Drivers\etc\hosts" -Value $hostContent -Force
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "PullServerRegion $pullServerRegion`nServerRegion $(Get-rsRegion -Value $env:COMPUTERNAME)"
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Adding $hostContent to HostsFile"
-      $hostContent = ((Get-NetAdapter | ? status -eq 'up' | Get-NetIPAddress -ea 0 | ? IPAddress -like '10.*').IPAddress + "`t`t`t" + $env:COMPUTERNAME)
+      $hostContent = ((Get-NetAdapter | Where-Object status -eq 'up' | Get-NetIPAddress -ea 0 | Where-Object IPAddress -like '10.*').IPAddress + "`t`t`t" + $env:COMPUTERNAME)
       Add-Content -Path "C:\Windows\System32\Drivers\etc\hosts" -Value $hostContent -Force
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Adding $hostContent to HostsFile"
       return
