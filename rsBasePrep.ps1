@@ -513,6 +513,7 @@ switch ($stage) {
    }
    4
    {
+      Restart-Computer -Force
       Load-Globals
       Set-Stage -value 5
       Clean-Up
