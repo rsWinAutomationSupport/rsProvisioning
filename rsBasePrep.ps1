@@ -486,6 +486,8 @@ switch ($stage) {
       Create-ScheduledTask
       Install-Net45
       Install-WMF4
+      New-NetFirewallRule -DisplayName "WINRM" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 5985-5986
+      Set-Item WSMan:\localhost\Client\TrustedHosts * -force
       Set-Stage -value 2
       Restart-Computer -Force
    }
@@ -502,8 +504,6 @@ switch ($stage) {
       Set-MSN -Enabled $false
       Disable-TOE
       Set-DataDrive
-      New-NetFirewallRule -DisplayName "WINRM" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 5985-5986
-      Set-Item WSMan:\localhost\Client\TrustedHosts * -force
       Install-TempDSC
       Create-PullServerInfo
       Update-HostFile
@@ -513,8 +513,8 @@ switch ($stage) {
    }
    4
    {
-      Set-Stage -value 5
       Load-Globals
+      Set-Stage -value 5
       Clean-Up
       Break
    }
