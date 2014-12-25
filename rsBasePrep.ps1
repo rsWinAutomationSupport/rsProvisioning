@@ -69,7 +69,7 @@ Function Load-Globals {
 #                                             Function - Disable Client For Microsoft Networks
 ##################################################################################################################################
 Function Set-MSN {
-param([bool][ValidateNotNull()]$Enabled)
+   param([bool][ValidateNotNull()]$Enabled)
    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Disabling MSN on all adapters"
    (Get-NetAdapter).Name | % {Set-NetAdapterBinding -Name $_ -DisplayName "Client for Microsoft Networks" -Enabled $Enabled}
    return
@@ -129,10 +129,10 @@ Function Install-TempDSC {
    if((Get-rsRole -Value $env:COMPUTERNAME) -eq "Pull") {
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing inital temporary DSC configuration C:\DevOps\rsProvisioning\initDSC.ps1"
       try{
-          Invoke-Expression "C:\DevOps\rsProvisioning\initDSC.ps1"
+         Invoke-Expression "C:\DevOps\rsProvisioning\initDSC.ps1"
       }
       catch {
-        Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Error initDSC.ps1`n$($_.Exception.message)"
+         Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Error initDSC.ps1`n$($_.Exception.message)"
       }
       Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Temporary DSC intallation complete"
    }
@@ -513,6 +513,7 @@ switch ($stage) {
    }
    4
    {
+      Set-Stage -value 5
       Load-Globals
       Clean-Up
       Break
