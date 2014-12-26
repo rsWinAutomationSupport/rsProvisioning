@@ -255,37 +255,6 @@ Function Disable-TOE {
    return
 }
    
-   
-   ##################################################################################################################################
-   #                                             Function - Set .NET machine keys (all nodes - required for webfarm viewstate decryption)
-   ##################################################################################################################################
-function Set-MachineKey {
-   $netfx = @{
-   "1x86" = "C:\WINDOWS\Microsoft.NET\Framework\v1.1.4322\CONFIG\machine.config"
-   "2x86" = "C:\WINDOWS\Microsoft.NET\Framework\v2.0.50727\CONFIG\machine.config"
-   "4x86" = "C:\WINDOWS\Microsoft.NET\Framework\v4.0.30319\CONFIG\machine.config"
-   "2x64" = "C:\WINDOWS\Microsoft.NET\Framework64\v2.0.50727\CONFIG\machine.config"
-   "4x64" = "C:\WINDOWS\Microsoft.NET\Framework64\v4.0.30319\CONFIG\machine.config"
-   }
-   Write-Log -value "Setting Machine Keys"
-   foreach ($key in $netfx.Keys) {
-      $machineConfig = $netfx[$key]
-      if (Test-Path $machineConfig) {
-         $xml = [xml](get-content $machineConfig)
-         $xml.Save($machineConfig + "_$currentDate")
-         $root = $xml.get_DocumentElement()
-         $system_web = $root."system.web"
-         if ($system_web.machineKey -eq $null) {
-            $machineKey = $xml.CreateElement("machineKey")
-            $a = $system_web.AppendChild($machineKey)
-         }
-         $system_web.SelectSingleNode("machineKey").SetAttribute("validationKey","$validationKey")
-         $system_web.SelectSingleNode("machineKey").SetAttribute("decryptionKey","$decryptionKey")
-         $a = $xml.Save($machineConfig)
-      }
-   }
-}
-   
    ##################################################################################################################################
    #                                             Function - Install .NET 4.5 (if needed)
    ##################################################################################################################################
@@ -509,6 +478,11 @@ switch ($stage) {
       Update-HostFile
       Install-DSC
       Set-Stage -value 4
+      Clean-Up
+      Break
+   }
+   4
+   {
       Clean-Up
       Break
    }
