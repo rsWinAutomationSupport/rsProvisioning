@@ -514,6 +514,7 @@ switch ($stage) {
    }
    4
    {
+      taskkill /F /IM WmiPrvSE.exe
       Load-Globals
       Set-Stage -value 5
       Clean-Up
