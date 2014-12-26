@@ -478,8 +478,7 @@ switch ($stage) {
       Update-HostFile
       Install-DSC
       Set-Stage -value 4
-      Clean-Up
-      Break
+      Restart-Computer -Force
    }
    4
    {
