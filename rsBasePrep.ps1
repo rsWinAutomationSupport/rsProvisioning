@@ -509,11 +509,11 @@ switch ($stage) {
       Update-HostFile
       Install-DSC
       Set-Stage -value 4
+      taskkill /F /IM WmiPrvSE.exe
       Restart-Computer -Force
    }
    4
    {
-      Restart-Computer -Force
       Load-Globals
       Set-Stage -value 5
       Clean-Up
