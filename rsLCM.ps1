@@ -110,7 +110,7 @@ else {
     }
     else 
     {
-        Write-EventLog -LogName DevOps -Source LCM -EntryType Error -EventId 1000 -Message "Client certificate push failed after $certSyncRetries attempts. `n Please Re-run rsLCM process manually to correct this as client MOF will not be generated for this host."
+        Write-EventLog -LogName DevOps -Source LCM -EntryType Error -EventId 1000 -Message "Client certificate push failed after $certSyncAttempt attempts. `n Please Re-run rsLCM process manually to correct this as client MOF will not be generated for this host."
     }
    
    chdir "C:\Windows\Temp"
