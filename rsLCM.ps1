@@ -43,8 +43,6 @@ Configuration PullServerLCM
 . "$("C:\DevOps", $d.mR, 'PullServerInfo.ps1' -join '\' )"
 New-rsEventLogSource -logSource LCM
 
-$gitPath = "C:\Program Files (x86)\Git\bin\git.exe"
-
 if(Test-rsCloud) {
    $ObjectGuid = (Get-rsXenInfo -value name) -replace "instance-", ""
 }
@@ -65,16 +63,16 @@ else {
    $Node = $env:COMPUTERNAME
    $cN = "CN=" + $Node + "_enc"
    Set-Location -Path ("C:\DevOps", $d.mR -join "\")
-   Start -Wait $gitPath -ArgumentList "fetch origin $($d.branch_rsConfigs)"
-   Start -Wait $gitPath -ArgumentList "merge remotes/origin/$($d.branch_rsConfigs)"
+   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "fetch origin $($d.branch_rsConfigs)"
+   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "merge remotes/origin/$($d.branch_rsConfigs)"
    
    if (!(Test-Path -Path $("C:\DevOps", $d.mR, "Certificates", "Credentials" -join '\')))
    {
       New-Item -Path $("C:\DevOps", $d.mR, "Certificates", "Credentials" -join '\') -ItemType directory
    }
    powershell.exe "C:\DevOps\rsProvisioning\makecert.exe" -r -pe -n $cN -sky exchange -ss my $("C:\DevOps", $d.mR, "Certificates\Credentials","$ObjectGuid.cer"  -join '\'), -sr localmachine, -len 2048
-   Start -Wait $gitPath -ArgumentList "add $("C:\DevOps", $d.mR, "Certificates\Credentials","$ObjectGuid.cer"  -join '\')"
-   Start -Wait $gitPath -ArgumentList "commit -a -m `"pushing $ObjectGuid.crt`""
+   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $("C:\DevOps", $d.mR, "Certificates\Credentials","$ObjectGuid.cer"  -join '\')"
+   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -a -m `"pushing $ObjectGuid.crt`""
    
    <# Commenting out below commands as they have been replaced by new logic below
    Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "fetch origin $($d.branch_rsConfigs)"
@@ -89,9 +87,9 @@ else {
     
     Do
     {
-        $gitFetch = Start-Process -WindowStyle Hidden -PassThru -Wait $gitPath -ArgumentList commit "fetch origin $($d.branch_rsConfigs)"
-        $gitMerge = Start-Process -WindowStyle Hidden -PassThru -Wait $gitPath -ArgumentList commit "merge remotes/origin/$($d.branch_rsConfigs)"    
-        $gitPush = Start-Process -WindowStyle Hidden -PassThru -Wait $gitPath -ArgumentList commit "push origin $($d.branch_rsConfigs)"
+        $gitFetch = Start-Process -PassThru -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList commit "fetch origin $($d.branch_rsConfigs)"
+        $gitMerge = Start-Process -PassThru -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList commit "merge remotes/origin/$($d.branch_rsConfigs)"    
+        $gitPush = Start-Process -PassThru -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList commit "push origin $($d.branch_rsConfigs)"
 
         if (($gitFetch.ExitCode -eq 0) -or ($gitMerge.ExitCode -eq 0) -or ($gitPush.ExitCode -eq 0))
         {
