@@ -87,9 +87,9 @@ else {
     
     Do
     {
-        $gitFetch = Start-Process -PassThru -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList commit "fetch origin $($d.branch_rsConfigs)"
-        $gitMerge = Start-Process -PassThru -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList commit "merge remotes/origin/$($d.branch_rsConfigs)"    
-        $gitPush = Start-Process -PassThru -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList commit "push origin $($d.branch_rsConfigs)"
+        $gitFetch = Start-Process -PassThru -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "fetch origin $($d.branch_rsConfigs)"
+        $gitMerge = Start-Process -PassThru -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "merge remotes/origin/$($d.branch_rsConfigs)"    
+        $gitPush = Start-Process -PassThru -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.branch_rsConfigs)"
 
         if (($gitFetch.ExitCode -eq 0) -or ($gitMerge.ExitCode -eq 0) -or ($gitPush.ExitCode -eq 0))
         {
