@@ -100,7 +100,7 @@ else {
         else
         {
             $gitSyncSuccess = $false
-            Write-EventLog -LogName DevOps -Source LCM -EntryType Error -EventId 1000` -Message "Client certificate git push attempt failed... `n Git FETCH: $($gitFetch.ExitCode) `n Git MERGE: $($gitMerge.ExitCode) `n Git PUSH: $($gitPush.ExitCode) `n Attempt: $certSyncAttempt"
+            Write-EventLog -LogName DevOps -Source LCM -EntryType Error -EventId 1000 -Message "Client certificate git push attempt failed... `n Git FETCH: $($gitFetch.ExitCode) `n Git MERGE: $($gitMerge.ExitCode) `n Git PUSH: $($gitPush.ExitCode) `n Attempt: $certSyncAttempt"
             Start-Sleep (Get-Random -Minimum 15 -Maximum 120)
         }
         $certSyncAttempt += 1
@@ -108,11 +108,11 @@ else {
 
     if (($gitSyncSuccess))
     {
-        Write-EventLog -LogName DevOps -Source LCM -EntryType Information -EventId 1000` -Message "Client certificate push complete after $certSyncRetries attempt(s)."
+        Write-EventLog -LogName DevOps -Source LCM -EntryType Information -EventId 1000 -Message "Client certificate push complete after $certSyncRetries attempt(s)."
     }
     else 
     {
-        Write-EventLog -LogName DevOps -Source LCM -EntryType Error -EventId 1000` -Message "Client certificate push failed after $certSyncRetries attempts. `n Please Re-run rsLCM process manually to correct this as client MOF will not be generated for this host."
+        Write-EventLog -LogName DevOps -Source LCM -EntryType Error -EventId 1000 -Message "Client certificate push failed after $certSyncRetries attempts. `n Please Re-run rsLCM process manually to correct this as client MOF will not be generated for this host."
     }
    
    chdir "C:\Windows\Temp"
