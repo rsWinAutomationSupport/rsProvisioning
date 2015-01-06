@@ -106,11 +106,11 @@ else {
 
     if (($gitSyncSuccess))
     {
-        Write-EventLog -LogName DevOps -Source LCM -EntryType Information -EventId 1000 -Message "Client certificate push complete after $certSyncAttempt attempt(s)."
+        Write-EventLog -LogName DevOps -Source LCM -EntryType Information -EventId 1000 -Message "Client certificate push complete after $certSyncAttempt attempt(s).`n Git FETCH: $($gitFetch.ExitCode) `n Git MERGE: $($gitMerge.ExitCode) `n Git PUSH: $($gitPush.ExitCode)"
     }
     else 
     {
-        Write-EventLog -LogName DevOps -Source LCM -EntryType Error -EventId 1000 -Message "Client certificate push failed after $certSyncAttempt attempts. `n Please Re-run rsLCM process manually to correct this as client MOF will not be generated for this host."
+        Write-EventLog -LogName DevOps -Source LCM -EntryType Error -EventId 1000 -Message "Client certificate push failed after $certSyncAttempt attempts. `n Please Re-run rsLCM process manually to correct this as client MOF will not be generated for this host.`n Git FETCH: $($gitFetch.ExitCode) `n Git MERGE: $($gitMerge.ExitCode) `n Git PUSH: $($gitPush.ExitCode)"
     }
    
    chdir "C:\Windows\Temp"
