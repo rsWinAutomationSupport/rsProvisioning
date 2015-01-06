@@ -73,17 +73,15 @@ else {
    powershell.exe "C:\DevOps\rsProvisioning\makecert.exe" -r -pe -n $cN -sky exchange -ss my $("C:\DevOps", $d.mR, "Certificates\Credentials","$ObjectGuid.cer"  -join '\'), -sr localmachine, -len 2048
    Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "add $("C:\DevOps", $d.mR, "Certificates\Credentials","$ObjectGuid.cer"  -join '\')"
    Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "commit -a -m `"pushing $ObjectGuid.crt`""
-   
-   <# Commenting out below commands as they have been replaced by new logic below
-   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "fetch origin $($d.branch_rsConfigs)"
-   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "merge remotes/origin/$($d.branch_rsConfigs)"
-   Start -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.branch_rsConfigs)"
-   #>
-   
-   # Add a random wait between cert sync attempts, if any of the git commands return a non-zero exit code
-   #
+
+    # Add a random wait between cert sync attempts, if any of the git commands return a non-zero exit code
+    #
     $certSyncRetries = 5
     $certSyncAttempt = 0
+    $randOpt = @{
+                min = 15;
+                max = 120
+               }
     
     Do
     {
@@ -98,13 +96,14 @@ else {
         else
         {
             $gitSyncSuccess = $false
-            Write-EventLog -LogName DevOps -Source LCM -EntryType Error -EventId 1000 -Message "Client certificate git push attempt failed... `n Git FETCH: $($gitFetch.ExitCode) `n Git MERGE: $($gitMerge.ExitCode) `n Git PUSH: $($gitPush.ExitCode) `n Attempt: $certSyncAttempt"
-            Start-Sleep (Get-Random -Minimum 15 -Maximum 120)
+            $delayRandom = (Get-Random -Minimum $randOpt.min -Maximum $randOpt.max)
+            Write-EventLog -LogName DevOps -Source LCM -EntryType Warning -EventId 1000 -Message "Client certificate git push attempt failed with following exit codes: `n Git FETCH: $($gitFetch.ExitCode) `n Git MERGE: $($gitMerge.ExitCode) `n Git PUSH: $($gitPush.ExitCode) `n Attempt: $certSyncAttempt `n Retrying in $delayRandom seconds..."
+            Start-Sleep -Seconds $delayRandom
         }
         $certSyncAttempt += 1
     } Until (($certSyncAttempt -eq $certSyncRetries) -or ($gitSyncSuccess))
 
-    if (($gitSyncSuccess))
+    if ($gitSyncSuccess)
     {
         Write-EventLog -LogName DevOps -Source LCM -EntryType Information -EventId 1000 -Message "Client certificate push complete after $certSyncAttempt attempt(s).`n Git FETCH: $($gitFetch.ExitCode) `n Git MERGE: $($gitMerge.ExitCode) `n Git PUSH: $($gitPush.ExitCode)"
     }
