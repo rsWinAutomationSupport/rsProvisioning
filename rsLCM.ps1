@@ -91,7 +91,7 @@ else {
         $gitMerge = Start-Process -PassThru -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "merge remotes/origin/$($d.branch_rsConfigs)"    
         $gitPush = Start-Process -PassThru -Wait "C:\Program Files (x86)\Git\bin\git.exe" -ArgumentList "push origin $($d.branch_rsConfigs)"
 
-        if (($gitFetch.ExitCode -eq 0) -or ($gitMerge.ExitCode -eq 0) -or ($gitPush.ExitCode -eq 0))
+        if (($gitFetch.ExitCode -eq 0) -and ($gitMerge.ExitCode -eq 0) -and ($gitPush.ExitCode -eq 0))
         {
             $gitSyncSuccess = $true
         }
