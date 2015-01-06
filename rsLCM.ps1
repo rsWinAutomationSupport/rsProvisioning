@@ -106,7 +106,7 @@ else {
 
     if (($gitSyncSuccess))
     {
-        Write-EventLog -LogName DevOps -Source LCM -EntryType Information -EventId 1000 -Message "Client certificate push complete after $certSyncRetries attempt(s)."
+        Write-EventLog -LogName DevOps -Source LCM -EntryType Information -EventId 1000 -Message "Client certificate push complete after $certSyncAttempt attempt(s)."
     }
     else 
     {
