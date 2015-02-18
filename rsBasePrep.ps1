@@ -153,11 +153,24 @@ Function Install-DSC {
       powershell.exe certutil -addstore -f root $("C:\DevOps", $d.mR, "Certificates\PullServer.crt" -join '\')      
       $i = 0
       do {
-         if ( $((Get-WinEvent Microsoft-Windows-DSC/Operational | Select -First 1).id) -eq "4104" ) {
+         $StartConsistency = $false
+         $Pending = Test-Path "C:\Windows\System32\Configuration\Pending.mof"
+         $ConsistencyRunning = (Get-ScheduledTask -TaskName Consistency).State -eq "Running"
+         if ( $((Get-WinEvent Microsoft-Windows-DSC/Operational | Select -First 1).id) -eq "4104" -or 
+              ($Pending -and (-not $ConsistencyRunning))) {
             Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
+            if ($Pending -and (-not $ConsistencyRunning)) 
+            {
+               $StartConsistency = $true
+            }
          }
-         if($i -gt 5) {
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Waiting for Client to install DSC configuration"
+         if($i -gt 5 -or $StartConsistency) {
+            $Message = "Waiting for Client to install DSC configuration"
+            if ($StartConsistency)
+            {
+               $Message += "`nFound Pending.mof and Consistency task not running and therefore started Consistency Task"               
+            }
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message $Message
             $i = 0
          }
          $i++
