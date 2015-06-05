@@ -170,13 +170,7 @@ Function Install-DSC
 
                 Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
             }
-             
-            # Wait for Consistency task to complete before checking results   
-            do
-            {
-                Start-sleep -Seconds 20
-            } while ((Get-ScheduledTask -TaskName Consistency).State -eq "Running")
-
+            Start-sleep -Seconds 60
         }
         while ( -not (Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
 
