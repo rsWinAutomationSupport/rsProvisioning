@@ -141,70 +141,68 @@ Function Install-TempDSC {
    ##################################################################################################################################
    #                                             Function - Install DSC (all nodes)
    ##################################################################################################################################
-Function Install-DSC {
-   Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing LCM"
-   try{
-      Invoke-Expression "C:\DevOps\rsProvisioning\rsLCM.ps1"
-   }
-   catch {
-      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Error in rsLCM.ps1`n$($_.Exception.message)"
-   }
-   if((Get-rsRole -Value $env:COMPUTERNAME) -ne "Pull") {
-      powershell.exe certutil -addstore -f root $("C:\DevOps", $d.mR, "Certificates\PullServer.crt" -join '\')      
-      $i = 0
-      do {
-         $StartConsistency = $false
-         $Pending = Test-Path "C:\Windows\System32\Configuration\Pending.mof"
-         $ConsistencyRunning = (Get-ScheduledTask -TaskName Consistency).State -eq "Running"
-         if ( $((Get-WinEvent Microsoft-Windows-DSC/Operational | Select -First 1).id) -eq "4104" -or 
-              ($Pending -and (-not $ConsistencyRunning))) {
-            Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
-            if ($Pending -and (-not $ConsistencyRunning)) 
-            {
-               $StartConsistency = $true
-            }
-         }
-         if($i -gt 5 -or $StartConsistency) {
+Function Install-DSC 
+{
+    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing LCM"
+    try
+    {
+        Invoke-Expression "C:\DevOps\rsProvisioning\rsLCM.ps1"
+    }
+    catch
+    {
+        Write-EventLog -LogName DevOps -Source BasePrep -EntryType Error -EventId 1002 -Message "Error in rsLCM.ps1`n$($_.Exception.message)"
+    }
+
+    if((Get-rsRole -Value $env:COMPUTERNAME) -ne "Pull") 
+    {
+        powershell.exe certutil -addstore -f root $("C:\DevOps", $d.mR, "Certificates\PullServer.crt" -join '\')
+        
+        do 
+        {
             $Message = "Waiting for Client to install DSC configuration"
-            if ($StartConsistency)
+            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 2000 -Message $Message
+
+            $ConsistencyRunning = (Get-ScheduledTask -TaskName Consistency).State -eq "Running"
+            if (-not $ConsistencyRunning)
             {
-               $Message += "`nFound Pending.mof and Consistency task not running and therefore started Consistency Task"               
+                $Message = "Starting Consistency task"
+                Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 2001 -Message $Message
+
+                Get-ScheduledTask -TaskName "Consistency" | Start-ScheduledTask
             }
-            Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message $Message
-            $i = 0
-         }
-         $i++
-         Start-Sleep -Seconds 10
-      }
-      while (!(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
-      Set-MSN -Enabled $true
-   }
-   Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "LCM installation complete"
-   ### Pullserver specific tasks, install WindowsFeature Web-Service, install SSL certificates then run rsPullServer.ps1 to install DSC
-   if((Get-rsRole -Value $env:COMPUTERNAME) -eq "Pull") {
-      Set-rsHash -file $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\') -hash "C:\DevOps\rsPullServer.hash"
-      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing WindowsFeature Web-Server"
-      Install-WindowsFeature Web-Server
-      Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "IIS installation Complete."
-      ### Install SSL certificates on pullserver
-      Install-rsCertificates
-      ### Copy required files for PSDDesiredStateCofngiuration website
-      if((Test-Path -Path "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\bin") -eq $false) {
-         New-Item -ItemType directory -Path "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\bin"
-      }
-      if((test-path -Path "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\bin\Microsoft.Powershell.DesiredStateConfiguration.Service.dll") -eq $false) {
-         Copy-Item "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\Microsoft.Powershell.DesiredStateConfiguration.Service.dll" -Destination "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\bin"
-      }
-      if((Test-Path "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\web.config") -eq $false) {
-         Copy-Item "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\PSDSCPullServer.config" -Destination "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\web.config"
-      }
-      ### Run rsPullServer.ps1 to install DSC on pullserver
-      if(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof") {
-         Remove-Item -Path "C:\Windows\System32\Configuration\Current.mof" -Recurse -Force
-      }
-      Invoke-DSC
-   }
-   return
+            Start-sleep -Seconds 60
+        }
+        while ( -not (Test-Path -Path "C:\Windows\System32\Configuration\Current.mof"))
+
+        Set-MSN -Enabled $true
+    }
+    Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "LCM installation complete"
+    
+    ### Pullserver specific tasks, install WindowsFeature Web-Service, install SSL certificates then run rsPullServer.ps1 to install DSC
+    if((Get-rsRole -Value $env:COMPUTERNAME) -eq "Pull") {
+        Set-rsHash -file $("C:\DevOps", $d.mR, "rsPullServer.ps1" -join '\') -hash "C:\DevOps\rsPullServer.hash"
+        Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "Installing WindowsFeature Web-Server"
+        Install-WindowsFeature Web-Server
+        Write-EventLog -LogName DevOps -Source BasePrep -EntryType Information -EventId 1000 -Message "IIS installation Complete."
+        ### Install SSL certificates on pullserver
+        Install-rsCertificates
+        ### Copy required files for PSDDesiredStateCofngiuration website
+        if((Test-Path -Path "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\bin") -eq $false) {
+            New-Item -ItemType directory -Path "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\bin"
+        }
+        if((test-path -Path "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\bin\Microsoft.Powershell.DesiredStateConfiguration.Service.dll") -eq $false) {
+            Copy-Item "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\Microsoft.Powershell.DesiredStateConfiguration.Service.dll" -Destination "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\bin"
+        }
+        if((Test-Path "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\web.config") -eq $false) {
+            Copy-Item "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\PSDSCPullServer.config" -Destination "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer\web.config"
+        }
+        ### Run rsPullServer.ps1 to install DSC on pullserver
+        if(Test-Path -Path "C:\Windows\System32\Configuration\Current.mof") {
+            Remove-Item -Path "C:\Windows\System32\Configuration\Current.mof" -Recurse -Force
+        }
+        Invoke-DSC
+    }
+    return
 }
    
    
